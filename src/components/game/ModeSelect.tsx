@@ -1,5 +1,6 @@
 import { GameMode } from '../../lib/types'
 import { Gamepad2, Leaf, Timer, Calendar, Book, Trophy } from 'lucide-react'
+import AuthButton from '../auth/AuthButton'
 
 interface ModeSelectProps {
   onSelectMode: (mode: GameMode) => void
@@ -36,7 +37,12 @@ const modes: { mode: GameMode; name: string; description: string; icon: typeof G
 
 export default function ModeSelect({ onSelectMode, onShowWordBank, onShowLeaderboard }: ModeSelectProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+      {/* Auth button - top right */}
+      <div className="absolute top-4 right-4">
+        <AuthButton />
+      </div>
+
       <h1 className="text-4xl font-black text-white mb-2">Scramble</h1>
       <p className="text-slate-400 mb-8">A word-finding puzzle game</p>
 
