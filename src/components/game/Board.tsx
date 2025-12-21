@@ -3,6 +3,7 @@ import Block from './Block'
 import Particles from '../effects/Particles'
 import { Block as BlockType, ClearedPosition } from '../../lib/types'
 import { GRID_WIDTH, GRID_HEIGHT } from '../../lib/constants'
+import { playDangerWarning } from '../../lib/sounds'
 
 interface ParticleEvent {
   id: number
@@ -165,6 +166,17 @@ export default function Board({ blocks, onMoveLeft, onMoveRight, onDrop, particl
 
   // Calculate danger level for visual warning
   const dangerLevel = useMemo(() => getDangerLevel(blocks), [blocks])
+
+  // Track previous danger level to only play sound on increase
+  const prevDangerLevelRef = useRef(0)
+
+  // Play danger warning sound when danger level increases to >= 2
+  useEffect(() => {
+    if (dangerLevel >= 2 && prevDangerLevelRef.current < 2) {
+      playDangerWarning()
+    }
+    prevDangerLevelRef.current = dangerLevel
+  }, [dangerLevel])
 
   // Calculate drop shadow position
   const dropShadow = useMemo(() => getDropShadowPosition(blocks), [blocks])

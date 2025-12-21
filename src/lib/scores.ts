@@ -1,4 +1,4 @@
-// Local storage based score management
+// Local storage and cloud-based score management
 
 import { GameMode } from './types'
 
@@ -21,6 +21,57 @@ export interface ScoreEntry {
 }
 
 const SCORES_KEY = 'scramble-scores'
+
+// ============ CLOUD FUNCTIONS ============
+
+// Submit score to cloud leaderboard
+export async function submitScoreToCloud(entry: Omit<ScoreEntry, 'id' | 'date'>): Promise<{ success: boolean; id?: string }> {
+  try {
+    const response = await fetch('/api/scores/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    })
+
+    if (!response.ok) {
+      console.error('Failed to submit score to cloud:', response.status)
+      return { success: false }
+    }
+
+    const result = await response.json()
+    return { success: true, id: result.id }
+  } catch (error) {
+    console.error('Error submitting score to cloud:', error)
+    return { success: false }
+  }
+}
+
+// Fetch global leaderboard
+export async function fetchGlobalLeaderboard(
+  options: { mode?: GameMode; limit?: number; timeframe?: 'all' | 'today' | 'week' } = {}
+): Promise<ScoreEntry[]> {
+  try {
+    const params = new URLSearchParams()
+    if (options.mode) params.set('mode', options.mode)
+    if (options.limit) params.set('limit', options.limit.toString())
+    if (options.timeframe) params.set('timeframe', options.timeframe)
+
+    const response = await fetch(`/api/scores/leaderboard?${params.toString()}`)
+
+    if (!response.ok) {
+      console.error('Failed to fetch global leaderboard:', response.status)
+      return []
+    }
+
+    const result = await response.json()
+    return result.scores || []
+  } catch (error) {
+    console.error('Error fetching global leaderboard:', error)
+    return []
+  }
+}
+
+// ============ LOCAL FUNCTIONS ============
 
 // Generate unique ID
 function generateId(): string {

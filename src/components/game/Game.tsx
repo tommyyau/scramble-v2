@@ -2,7 +2,8 @@ import { useEffect, useCallback, useState, useRef } from 'react'
 import { useGameStore } from '../../stores/game'
 import { GameMode } from '../../lib/types'
 import { MODE_CONFIGS, getDropSpeedForLevel } from '../../lib/constants'
-import { submitScore } from '../../lib/scores'
+import { submitScore, submitScoreToCloud } from '../../lib/scores'
+import { isSoundEnabled, setSoundEnabled } from '../../lib/sounds'
 import Board from './Board'
 import Controls from './Controls'
 import ScoreDisplay from './ScoreDisplay'
@@ -12,7 +13,8 @@ import ModeSelect from './ModeSelect'
 import WordPopup from './WordPopup'
 import ChainIndicator from '../effects/ChainIndicator'
 import LevelUpIndicator from '../effects/LevelUpIndicator'
-import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check } from 'lucide-react'
+import FloatingScore from '../effects/FloatingScore'
+import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check, Volume2, VolumeX } from 'lucide-react'
 
 const LEVEL_UP_INTERVAL = 45 // seconds between level ups
 
@@ -38,12 +40,19 @@ function storePlayerName(name: string): void {
   }
 }
 
+interface FloatingScoreEvent {
+  id: number
+  score: number
+}
+
 export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
   const [showModeSelect, setShowModeSelect] = useState(true)
   const [sprintTimer, setSprintTimer] = useState(120) // 2 minutes
   const [_levelTimer, setLevelTimer] = useState(LEVEL_UP_INTERVAL) // Internal timer, not displayed
   const [playerName, setPlayerName] = useState(getStoredPlayerName)
   const [scoreSaved, setScoreSaved] = useState(false)
+  const [soundOn, setSoundOn] = useState(isSoundEnabled)
+  const [floatingScores, setFloatingScores] = useState<FloatingScoreEvent[]>([])
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   const {
@@ -174,14 +183,32 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     return () => clearTimeout(timer)
   }, [isCelebrating, endCelebration])
 
-  const handleSaveScore = useCallback(() => {
+  // Trigger floating score when word is found
+  useEffect(() => {
+    if (lastFoundWord && lastFoundWord.score > 0) {
+      setFloatingScores(prev => [...prev, { id: lastFoundWord.id, score: lastFoundWord.score }])
+    }
+  }, [lastFoundWord])
+
+  // Remove floating score when animation completes
+  const handleFloatingScoreComplete = useCallback((id: number) => {
+    setFloatingScores(prev => prev.filter(fs => fs.id !== id))
+  }, [])
+
+  // Toggle sound
+  const handleToggleSound = useCallback(() => {
+    const newValue = !soundOn
+    setSoundOn(newValue)
+    setSoundEnabled(newValue)
+  }, [soundOn])
+
+  const handleSaveScore = useCallback(async () => {
     if (!playerName.trim()) {
       nameInputRef.current?.focus()
       return
     }
 
-    storePlayerName(playerName.trim())
-    submitScore({
+    const scoreData = {
       name: playerName.trim(),
       score,
       level,
@@ -190,7 +217,16 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
       bestChain: stats.bestChain,
       mode,
       wordHistory: stats.wordHistory,
-    })
+    }
+
+    storePlayerName(playerName.trim())
+
+    // Save locally
+    submitScore(scoreData)
+
+    // Also submit to cloud (fire and forget, don't block UI)
+    submitScoreToCloud(scoreData).catch(console.error)
+
     setScoreSaved(true)
   }, [playerName, score, level, stats, mode])
 
@@ -313,17 +349,37 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
             />
           )}
 
+          {/* Floating scores */}
+          {floatingScores.map((fs) => (
+            <FloatingScore
+              key={fs.id}
+              score={fs.score}
+              x={150}
+              y={120}
+              onComplete={() => handleFloatingScoreComplete(fs.id)}
+            />
+          ))}
+
           {/* Pause overlay */}
           {isPaused && !isEffectivelyGameOver && (
             <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-xl">
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-4">Paused</div>
-                <button
-                  onClick={resumeGame}
-                  className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Resume
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={resumeGame}
+                    className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    Resume
+                  </button>
+                  <button
+                    onClick={handleToggleSound}
+                    className="px-6 py-2 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                    Sound: {soundOn ? 'On' : 'Off'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
