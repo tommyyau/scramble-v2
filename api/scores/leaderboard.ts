@@ -59,7 +59,7 @@ export default async function handler(req: Request): Promise<Response> {
       scores = scores.filter(s => new Date(s.date) >= cutoff)
     }
 
-    // Return scores (without wordHistory to reduce payload size)
+    // Return scores with wordHistory for expandable word list
     const leaderboard = scores.slice(0, limit).map(s => ({
       id: s.id,
       name: s.name,
@@ -70,6 +70,7 @@ export default async function handler(req: Request): Promise<Response> {
       bestChain: s.bestChain,
       mode: s.mode,
       date: s.date,
+      wordHistory: s.wordHistory,
     }))
 
     return new Response(JSON.stringify({ scores: leaderboard }), {
