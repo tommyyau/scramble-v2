@@ -15,8 +15,9 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
   const [modeFilter, setModeFilter] = useState<ModeFilter>('all')
   const [globalScores, setGlobalScores] = useState<ScoreEntry[]>([])
   const [isLoadingGlobal, setIsLoadingGlobal] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  // Fetch global scores when tab or filter changes
+  // Fetch global scores when tab, filter changes, or on mount
   useEffect(() => {
     if (activeTab !== 'global') return
 
@@ -35,7 +36,12 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
     }
 
     fetchScores()
-  }, [activeTab, modeFilter])
+  }, [activeTab, modeFilter, refreshKey])
+
+  // Refresh on mount to get latest scores
+  useEffect(() => {
+    setRefreshKey(k => k + 1)
+  }, [])
 
   const scores = useMemo(() => {
     if (activeTab === 'global') {
