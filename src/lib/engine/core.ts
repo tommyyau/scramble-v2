@@ -1,6 +1,6 @@
 import { Block, GameState, GameMode } from '../types'
 import { SPAWN_POSITION, LETTER_COLORS, GRID_HEIGHT } from '../constants'
-import { generateLetter } from './smart-letters'
+import { generateLetter, resetDailyLetterIndex } from './smart-letters'
 
 // Global block ID counter
 let blockIdCounter = 0
@@ -13,7 +13,12 @@ export function resetBlockIdCounter() {
  * Create the initial game state
  */
 export function createInitialState(mode: GameMode): GameState {
-  const nextLetter = generateLetter([])
+  // Reset daily letter index for daily mode to ensure consistent sequence
+  if (mode === 'daily') {
+    resetDailyLetterIndex()
+  }
+
+  const nextLetter = generateLetter([], mode)
 
   return {
     blocks: [],
@@ -46,8 +51,8 @@ export function spawnBlock(state: GameState, letter: string): GameState {
     color,
   }
 
-  // Generate next letter based on current grid
-  const nextLetter = generateLetter([...state.blocks, newBlock])
+  // Generate next letter based on current grid (and mode for daily seeding)
+  const nextLetter = generateLetter([...state.blocks, newBlock], state.mode)
 
   return {
     ...state,

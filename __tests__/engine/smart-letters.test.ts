@@ -5,6 +5,8 @@ import {
   getRandomWeightedLetter,
   findHelpfulLetters,
   countPossibleWords,
+  getDailySeed,
+  resetDailyLetterIndex,
 } from '../../src/lib/engine/smart-letters'
 
 describe('Random Weighted Letter Generation', () => {
@@ -219,5 +221,87 @@ describe('Distribution Balance', () => {
     expect(counts['E'] || 0).toBeGreaterThan(counts['Z'] || 0)
     expect(counts['A'] || 0).toBeGreaterThan(counts['X'] || 0)
     expect(counts['T'] || 0).toBeGreaterThan(counts['Q'] || 0)
+  })
+})
+
+describe('Daily Mode - Seeded Random', () => {
+  test('getDailySeed returns numeric seed in YYYYMMDD format', () => {
+    const seed = getDailySeed()
+    expect(seed).toBeGreaterThan(20240101) // After 2024
+    expect(seed).toBeLessThan(21000101) // Before 2100
+  })
+
+  test('daily mode produces same sequence when reset', () => {
+    // First sequence
+    resetDailyLetterIndex()
+    const sequence1: string[] = []
+    for (let i = 0; i < 20; i++) {
+      sequence1.push(generateLetter([], 'daily'))
+    }
+
+    // Reset and generate again
+    resetDailyLetterIndex()
+    const sequence2: string[] = []
+    for (let i = 0; i < 20; i++) {
+      sequence2.push(generateLetter([], 'daily'))
+    }
+
+    // Should be identical
+    expect(sequence1).toEqual(sequence2)
+  })
+
+  test('daily mode ignores grid state (no smart letters)', () => {
+    // Even with a "helpful" grid, daily mode should use seeded random
+    const goodGrid = [
+      block(0, 7, 'C', true),
+      block(1, 7, 'A', true),
+    ]
+
+    resetDailyLetterIndex()
+    const sequence1: string[] = []
+    for (let i = 0; i < 10; i++) {
+      sequence1.push(generateLetter(goodGrid, 'daily'))
+    }
+
+    // Reset and use empty grid
+    resetDailyLetterIndex()
+    const sequence2: string[] = []
+    for (let i = 0; i < 10; i++) {
+      sequence2.push(generateLetter([], 'daily'))
+    }
+
+    // Should be identical regardless of grid state
+    expect(sequence1).toEqual(sequence2)
+  })
+
+  test('non-daily modes use random (not seeded)', () => {
+    // Classic mode should produce different results
+    const results1 = new Set<string>()
+    const results2 = new Set<string>()
+
+    for (let i = 0; i < 50; i++) {
+      results1.add(generateLetter([], 'classic'))
+      results2.add(generateLetter([], 'classic'))
+    }
+
+    // Both should have variety (random)
+    expect(results1.size).toBeGreaterThan(5)
+    expect(results2.size).toBeGreaterThan(5)
+  })
+
+  test('daily mode follows Scrabble distribution', () => {
+    resetDailyLetterIndex()
+    const counts: Record<string, number> = {}
+
+    for (let i = 0; i < 1000; i++) {
+      const letter = generateLetter([], 'daily')
+      counts[letter] = (counts[letter] || 0) + 1
+    }
+
+    // Should roughly follow Scrabble distribution
+    // E should appear more than Q
+    expect(counts['E'] || 0).toBeGreaterThan(counts['Q'] || 0)
+    // Common letters should appear more than rare ones
+    expect(counts['A'] || 0).toBeGreaterThan(counts['Z'] || 0)
   })
 })

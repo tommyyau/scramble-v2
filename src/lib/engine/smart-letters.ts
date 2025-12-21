@@ -1,9 +1,67 @@
-import { Block } from '../types'
+import { Block, GameMode } from '../types'
 import { SCRABBLE_WEIGHTS, GRID_WIDTH, GRID_HEIGHT, MIN_WORD_LENGTH } from '../constants'
 import { isValidWord } from '../dictionary/words'
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 const VOWELS = ['A', 'E', 'I', 'O', 'U']
+
+// ============ SEEDED RANDOM FOR DAILY MODE ============
+
+/**
+ * Mulberry32 - a fast, high-quality 32-bit seeded PRNG
+ * Returns a function that generates numbers between 0 and 1
+ */
+function mulberry32(seed: number): () => number {
+  return function() {
+    let t = seed += 0x6D2B79F5
+    t = Math.imul(t ^ t >>> 15, t | 1)
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61)
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Get today's date as a numeric seed (YYYYMMDD format)
+ * Uses UTC to ensure same seed worldwide
+ */
+export function getDailySeed(): number {
+  const now = new Date()
+  const year = now.getUTCFullYear()
+  const month = now.getUTCMonth() + 1
+  const day = now.getUTCDate()
+  return year * 10000 + month * 100 + day
+}
+
+// Track letter index for daily mode (reset each game)
+let dailyLetterIndex = 0
+
+/**
+ * Reset daily letter index - call when starting a new daily game
+ */
+export function resetDailyLetterIndex(): void {
+  dailyLetterIndex = 0
+}
+
+/**
+ * Get a seeded random letter for daily mode
+ * Uses date + letter index to ensure deterministic sequence
+ */
+function getSeededWeightedLetter(): string {
+  const seed = getDailySeed() * 1000 + dailyLetterIndex++
+  const random = mulberry32(seed)
+
+  const totalWeight = Object.values(SCRABBLE_WEIGHTS).reduce((a, b) => a + b, 0)
+  let roll = random() * totalWeight
+
+  for (const letter of ALPHABET) {
+    roll -= SCRABBLE_WEIGHTS[letter]
+    if (roll <= 0) {
+      return letter
+    }
+  }
+
+  return 'E' // Fallback
+}
 
 /**
  * Get a random letter weighted by Scrabble distribution
@@ -141,12 +199,22 @@ export function findHelpfulLetters(blocks: Block[]): string[] {
 /**
  * Generate a letter for the game
  *
- * IMPORTANT: This is a SAFETY NET, not spoon-feeding!
+ * For DAILY MODE: Uses seeded random so everyone gets the same letters
+ * - No smart letter logic - pure deterministic sequence
+ * - Same date = same letter sequence for all players
+ *
+ * For OTHER MODES: Smart letter generation
  * - 90%+ of the time: Pure random with Scrabble weighting
  * - Only when grid is desperate (< 2 possible words): 30% chance to bias toward helpful letters
  * - Player still needs skill to position blocks and find words
  */
-export function generateLetter(blocks: Block[]): string {
+export function generateLetter(blocks: Block[], mode?: GameMode): string {
+  // DAILY MODE: Seeded random for consistent letters across all players
+  if (mode === 'daily') {
+    return getSeededWeightedLetter()
+  }
+
+  // Other modes use smart letter generation
   const possibleWordCount = countPossibleWords(blocks)
 
   // NORMAL MODE (most of the time): Pure random, Scrabble-weighted
