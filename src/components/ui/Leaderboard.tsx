@@ -1,34 +1,33 @@
 import { useState, useMemo, useEffect } from 'react'
-import { ArrowLeft, Trophy, Calendar, Medal, Zap, Type, ChevronDown, ChevronUp, Star, Globe, Loader2 } from 'lucide-react'
-import { getTopScores, getTodayScores, fetchGlobalLeaderboard, ScoreEntry } from '../../lib/scores'
+import { ArrowLeft, Trophy, Calendar, Medal, Zap, Type, ChevronDown, ChevronUp, Star, Loader2 } from 'lucide-react'
+import { fetchGlobalLeaderboard, ScoreEntry } from '../../lib/scores'
 import { GameMode } from '../../lib/types'
 
 interface LeaderboardProps {
   onBack: () => void
 }
 
-type TabType = 'today' | 'allTime' | 'global'
+type TabType = 'today' | 'allTime'
 type ModeFilter = 'all' | GameMode
 
 export default function Leaderboard({ onBack }: LeaderboardProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('global')
+  const [activeTab, setActiveTab] = useState<TabType>('today')
   const [modeFilter, setModeFilter] = useState<ModeFilter>('all')
   const [globalScores, setGlobalScores] = useState<ScoreEntry[]>([])
   const [isLoadingGlobal, setIsLoadingGlobal] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Fetch global scores when tab, filter changes, or on mount
+  // Fetch cloud scores when tab, filter changes, or on mount
   useEffect(() => {
-    if (activeTab !== 'global') return
-
     const fetchScores = async () => {
       setIsLoadingGlobal(true)
       try {
         const mode = modeFilter === 'all' ? undefined : modeFilter
-        const scores = await fetchGlobalLeaderboard({ mode, limit: 50 })
+        const timeframe = activeTab === 'today' ? 'today' : 'all'
+        const scores = await fetchGlobalLeaderboard({ mode, limit: 50, timeframe })
         setGlobalScores(scores)
       } catch (error) {
-        console.error('Failed to fetch global scores:', error)
+        console.error('Failed to fetch cloud scores:', error)
         setGlobalScores([])
       } finally {
         setIsLoadingGlobal(false)
@@ -44,15 +43,8 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
   }, [])
 
   const scores = useMemo(() => {
-    if (activeTab === 'global') {
-      return globalScores
-    }
-    const mode = modeFilter === 'all' ? undefined : modeFilter
-    if (activeTab === 'today') {
-      return getTodayScores(20, mode)
-    }
-    return getTopScores(20, mode)
-  }, [activeTab, modeFilter, globalScores])
+    return globalScores
+  }, [globalScores])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -116,17 +108,6 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
       <div className="px-4 py-3">
         <div className="max-w-lg mx-auto flex bg-slate-800/50 rounded-lg p-1">
           <button
-            onClick={() => setActiveTab('global')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md transition-colors ${
-              activeTab === 'global'
-                ? 'bg-secondary text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Globe size={16} />
-            <span className="text-sm font-medium">Global</span>
-          </button>
-          <button
             onClick={() => setActiveTab('today')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md transition-colors ${
               activeTab === 'today'
@@ -141,12 +122,12 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
             onClick={() => setActiveTab('allTime')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md transition-colors ${
               activeTab === 'allTime'
-                ? 'bg-primary text-white'
+                ? 'bg-secondary text-white'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Trophy size={16} />
-            <span className="text-sm font-medium">Local</span>
+            <span className="text-sm font-medium">All-Time</span>
           </button>
         </div>
 
@@ -171,11 +152,11 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
       {/* Score list */}
       <main className="flex-1 overflow-y-auto px-4 pb-4">
         <div className="max-w-lg mx-auto space-y-2">
-          {isLoadingGlobal && activeTab === 'global' ? (
+          {isLoadingGlobal ? (
             <div className="text-center py-12">
               <Loader2 size={48} className="mx-auto text-secondary mb-4 animate-spin" />
               <h3 className="text-lg font-medium text-slate-400">
-                Loading global scores...
+                Loading scores...
               </h3>
             </div>
           ) : scores.length === 0 ? (
@@ -185,11 +166,9 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
                 No Scores Yet
               </h3>
               <p className="text-sm text-slate-500">
-                {activeTab === 'global'
-                  ? 'Be the first to submit a score!'
-                  : activeTab === 'today'
-                  ? 'Play a game to get on the board!'
-                  : 'Complete some games to see your scores here.'}
+                {activeTab === 'today'
+                  ? 'No games played today yet!'
+                  : 'Be the first to submit a score!'}
               </p>
             </div>
           ) : (
