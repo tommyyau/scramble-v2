@@ -16,7 +16,7 @@ import LevelUpIndicator from '../effects/LevelUpIndicator'
 import FloatingScore from '../effects/FloatingScore'
 import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check, Volume2, VolumeX } from 'lucide-react'
 
-const LEVEL_UP_INTERVAL = 45 // seconds between level ups
+const LEVEL_UP_INTERVAL = 60 // seconds between level ups
 
 interface GameProps {
   onShowWordBank?: () => void

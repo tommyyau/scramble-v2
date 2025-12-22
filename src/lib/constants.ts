@@ -11,7 +11,7 @@ export const SPAWN_POSITION = { x: 4, y: 0 }
 // Timing
 export const INITIAL_DROP_SPEED = 600 // ms
 export const FAST_DROP_SPEED = 20 // ms
-export const LEVEL_SPEED_MULTIPLIER = 0.85 // 15% faster each level
+export const LEVEL_SPEED_MULTIPLIER = 0.90 // 10% faster each level
 export const MIN_DROP_SPEED = 100 // ms
 
 // Level thresholds - score needed to reach each level
