@@ -185,8 +185,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Play block land sound
     playBlockLand()
 
-    // Process chains
-    const chainResult = processChainReaction(newState)
+    // Process chains with streak bonus (streak of 1 = 1x, streak of 2 = 2x, etc.)
+    const potentialStreak = state.currentStreak + 1
+    const chainResult = processChainReaction(newState, potentialStreak)
 
     // Check for new words found
     const newWords = chainResult.wordsFound.filter(
@@ -245,7 +246,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Calculate individual word scores for history
       const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
         word,
-        score: calculateWordScore(word, { chainMultiplier: chainResult.chainCount, isRare: isRareWord(word) }),
+        score: calculateWordScore(word, { chainMultiplier: chainResult.chainCount, isRare: isRareWord(word), streakMultiplier: potentialStreak }),
       }))
 
       updates.lastFoundWord = {
@@ -300,8 +301,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Block just locked - play land sound
       playBlockLand()
 
-      // Process chains
-      const chainResult = processChainReaction(newState)
+      // Process chains with streak bonus (streak of 1 = 1x, streak of 2 = 2x, etc.)
+      const potentialStreak = state.currentStreak + 1
+      const chainResult = processChainReaction(newState, potentialStreak)
 
       // Check for new words found
       const newWords = chainResult.wordsFound.filter(

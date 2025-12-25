@@ -127,6 +127,33 @@ describe('Word Scoring', () => {
     expect(stacked).toBe(Math.round(base * 2 * 1.5))
   })
 
+  test('streak multiplier applies to base Scrabble score', () => {
+    const base = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
+    const streak2 = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false, streakMultiplier: 2 })
+    const streak3 = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false, streakMultiplier: 3 })
+
+    expect(streak2).toBe(base * 2)
+    expect(streak3).toBe(base * 3)
+  })
+
+  test('streak of 1 is equivalent to no streak bonus', () => {
+    const noStreak = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
+    const streak1 = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false, streakMultiplier: 1 })
+
+    expect(streak1).toBe(noStreak)
+  })
+
+  test('streak, chain, and rare bonuses all stack', () => {
+    // CAT: C=3 + A=1 + T=1 = 5 base
+    // With streak 2: 5 * 2 = 10
+    // With length multiplier (3 letters = 1x): 10 * 1 = 10
+    // With chain 2: 10 * 2 = 20
+    // With rare 1.5x: 20 * 1.5 = 30
+    const stacked = calculateWordScore('CAT', { chainMultiplier: 2, isRare: true, streakMultiplier: 2 })
+
+    expect(stacked).toBe(30)
+  })
+
   test('words with rare letters score higher', () => {
     const catScore = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
     const jazScore = calculateWordScore('JAZ', { chainMultiplier: 1, isRare: false }) // Hypothetical

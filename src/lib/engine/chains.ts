@@ -27,8 +27,10 @@ export function detectChain(state: GameState): boolean {
  * Process chain reactions until no more words form
  *
  * Returns the final state with all words cleared and score calculated
+ * @param state - Current game state
+ * @param streakMultiplier - Multiplier based on current streak (1 = no bonus, 2 = 2x, etc.)
  */
-export function processChainReaction(state: GameState): ChainResult {
+export function processChainReaction(state: GameState, streakMultiplier: number = 1): ChainResult {
   let currentState = { ...state }
   let chainCount = 0
   const allWordsFound: string[] = []
@@ -60,6 +62,7 @@ export function processChainReaction(state: GameState): ChainResult {
       const score = calculateWordScore(word.word, {
         chainMultiplier: multiplier,
         isRare: word.isRare,
+        streakMultiplier,
       })
       totalScore += score
 
