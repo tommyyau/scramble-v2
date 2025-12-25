@@ -1,6 +1,7 @@
 import { Block, GameState, GameMode } from '../types'
 import { SPAWN_POSITION, LETTER_COLORS, GRID_HEIGHT } from '../constants'
 import { generateLetter, resetDailyLetterIndex } from './smart-letters'
+import { getRandomBonusWord } from './bonus-word'
 
 // Global block ID counter
 let blockIdCounter = 0
@@ -29,6 +30,7 @@ export function createInitialState(mode: GameMode): GameState {
     wordsFound: [],
     bonusWordsFound: [],
     bonusWordsTarget: [],
+    currentBonusWord: getRandomBonusWord(),
     chainMultiplier: 1,
     gameOver: false,
     isPaused: false,

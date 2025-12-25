@@ -324,7 +324,7 @@ describe('Overlapping Words Bonus', () => {
 describe('Scoring Formula Verification', () => {
   test('formula: base × streak × chain', () => {
     // Verify the scoring formula with calculateWordScore directly
-    const catBase = 3 + 1 + 1 // C=3, A=1, T=1 = 5
+    // CAT = C(3) + A(1) + T(1) = 5 base
 
     // Streak 1, Chain 1
     expect(calculateWordScore('CAT', { chainMultiplier: 1, streakMultiplier: 1 })).toBe(5)

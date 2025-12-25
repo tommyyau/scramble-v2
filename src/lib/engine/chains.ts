@@ -2,6 +2,7 @@ import { GameState, ChainResult, ClearedPosition } from '../types'
 import { applyGravity } from './grid'
 import { findWords, clearWords } from './words'
 import { calculateWordScore } from './scoring'
+import { isBonusWordMatch, BONUS_WORD_MULTIPLIER } from './bonus-word'
 
 // Block color mapping for particles
 const blockColors: Record<string, string> = {
@@ -37,6 +38,7 @@ export function processChainReaction(state: GameState, streakMultiplier: number 
   const chainMultipliers: number[] = []
   const allClearedPositions: ClearedPosition[] = []
   let totalScore = 0
+  let bonusWordMatched = false
 
   // Keep checking for words and clearing them
   while (true) {
@@ -59,9 +61,16 @@ export function processChainReaction(state: GameState, streakMultiplier: number 
     })
 
     uniqueWords.forEach(word => {
+      // Check if this word matches the bonus word
+      const isBonusMatch = isBonusWordMatch(word.word, currentState.currentBonusWord)
+      if (isBonusMatch) {
+        bonusWordMatched = true
+      }
+
       const score = calculateWordScore(word.word, {
         chainMultiplier: multiplier,
         streakMultiplier,
+        bonusMultiplier: isBonusMatch ? BONUS_WORD_MULTIPLIER : 1,
       })
       totalScore += score
 
@@ -98,5 +107,6 @@ export function processChainReaction(state: GameState, streakMultiplier: number 
     chainCount,
     chainMultipliers,
     clearedPositions: allClearedPositions,
+    bonusWordMatched,
   }
 }

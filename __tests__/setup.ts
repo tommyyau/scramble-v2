@@ -45,6 +45,7 @@ export function createTestState(overrides: Partial<GameState> = {}): GameState {
     wordsFound: [],
     bonusWordsFound: [],
     bonusWordsTarget: [],
+    currentBonusWord: null,
     chainMultiplier: 1,
     gameOver: false,
     isPaused: false,

@@ -34,6 +34,7 @@ export interface GameState {
   wordsFound: string[]
   bonusWordsFound: string[]
   bonusWordsTarget: string[]
+  currentBonusWord: string | null
   chainMultiplier: number
   gameOver: boolean
   isPaused: boolean
@@ -50,6 +51,7 @@ export interface ChainResult extends GameState {
   chainCount: number
   chainMultipliers: number[]
   clearedPositions: ClearedPosition[]
+  bonusWordMatched: boolean
 }
 
 export type GameMode = 'classic' | 'zen' | 'sprint' | 'daily'

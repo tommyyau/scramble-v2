@@ -4,6 +4,7 @@ import { createInitialState, spawnBlock, tick, isGameOver } from '../lib/engine/
 import { moveBlock, hardDrop, applyGravity } from '../lib/engine/grid'
 import { processChainReaction } from '../lib/engine/chains'
 import { calculateWordScore } from '../lib/engine/scoring'
+import { getRandomBonusWord } from '../lib/engine/bonus-word'
 import {
   playWordClear,
   playChain,
@@ -82,6 +83,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   wordsFound: [],
   bonusWordsFound: [],
   bonusWordsTarget: [],
+  currentBonusWord: null,
   chainMultiplier: 1,
   gameOver: false,
   isPaused: false,
@@ -264,6 +266,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         wordHistory: [...currentStats.wordHistory, ...newWordsWithScores],
       }
 
+      // Handle bonus word match - generate new bonus word
+      if (chainResult.bonusWordMatched && state.currentBonusWord) {
+        updates.bonusWordsFound = [...state.bonusWordsFound, state.currentBonusWord]
+        updates.currentBonusWord = getRandomBonusWord()
+      }
+
       // Trigger particles at cleared positions
       if (chainResult.clearedPositions.length > 0) {
         updates.particleEvent = {
@@ -378,6 +386,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
           totalWordsFound: currentStats.totalWordsFound + newWords.length,
           bestStreak: newBestStreak,
           wordHistory: [...currentStats.wordHistory, ...newWordsWithScores],
+        }
+
+        // Handle bonus word match - generate new bonus word
+        if (chainResult.bonusWordMatched && state.currentBonusWord) {
+          updates.bonusWordsFound = [...state.bonusWordsFound, state.currentBonusWord]
+          updates.currentBonusWord = getRandomBonusWord()
         }
 
         // Trigger particles at cleared positions

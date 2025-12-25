@@ -3,6 +3,7 @@ import { LETTER_POINTS } from '../constants'
 interface ScoreOptions {
   chainMultiplier: number
   streakMultiplier?: number
+  bonusMultiplier?: number
 }
 
 /**
@@ -45,7 +46,7 @@ export function isRareWord(word: string): boolean {
  * Calculate the score for a word
  */
 export function calculateWordScore(word: string, options: ScoreOptions): number {
-  const { chainMultiplier, streakMultiplier = 1 } = options
+  const { chainMultiplier, streakMultiplier = 1, bonusMultiplier = 1 } = options
 
   // Base score: sum of letter values
   let baseScore = 0
@@ -57,7 +58,10 @@ export function calculateWordScore(word: string, options: ScoreOptions): number 
   baseScore *= streakMultiplier
 
   // Apply chain multiplier
-  const score = baseScore * chainMultiplier
+  let score = baseScore * chainMultiplier
+
+  // Apply bonus word multiplier (3x for matching the bonus word)
+  score *= bonusMultiplier
 
   return Math.round(score)
 }
