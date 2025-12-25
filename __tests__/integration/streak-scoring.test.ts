@@ -284,10 +284,8 @@ describe('Scoring Formula Verification', () => {
     expect(calculateWordScore('CAT', { chainMultiplier: 3, streakMultiplier: 5 })).toBe(75)
   })
 
-  test('high value word with multipliers', () => {
-    // QUIZ = Q(10) + U(1) + I(1) + Z(10) = 22 base
-    const quizBase = 10 + 1 + 1 + 10
-
+  test('words use Scrabble letter point values', () => {
+    // QUIZ = Q(10) + U(1) + I(1) + Z(10) = 22 base (just Scrabble values, no special bonus)
     expect(calculateWordScore('QUIZ', { chainMultiplier: 1, streakMultiplier: 1 })).toBe(22)
     expect(calculateWordScore('QUIZ', { chainMultiplier: 1, streakMultiplier: 2 })).toBe(44)
     expect(calculateWordScore('QUIZ', { chainMultiplier: 2, streakMultiplier: 2 })).toBe(88)
