@@ -178,7 +178,6 @@ export function checkAndClearWords(state: GameState): GameState {
   uniqueWords.forEach(word => {
     const score = calculateWordScore(word.word, {
       chainMultiplier: state.chainMultiplier,
-      isRare: word.isRare,
     })
     totalScore += score
     if (!wordTexts.includes(word.word)) {

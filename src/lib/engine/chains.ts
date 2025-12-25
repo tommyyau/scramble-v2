@@ -61,7 +61,6 @@ export function processChainReaction(state: GameState, streakMultiplier: number 
     uniqueWords.forEach(word => {
       const score = calculateWordScore(word.word, {
         chainMultiplier: multiplier,
-        isRare: word.isRare,
         streakMultiplier,
       })
       totalScore += score

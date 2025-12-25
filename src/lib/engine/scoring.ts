@@ -2,7 +2,6 @@ import { LETTER_POINTS } from '../constants'
 
 interface ScoreOptions {
   chainMultiplier: number
-  isRare: boolean
   streakMultiplier?: number
 }
 
@@ -46,7 +45,7 @@ export function isRareWord(word: string): boolean {
  * Calculate the score for a word
  */
 export function calculateWordScore(word: string, options: ScoreOptions): number {
-  const { chainMultiplier, isRare, streakMultiplier = 1 } = options
+  const { chainMultiplier, streakMultiplier = 1 } = options
 
   // Base score: sum of letter values
   let baseScore = 0
@@ -57,17 +56,8 @@ export function calculateWordScore(word: string, options: ScoreOptions): number 
   // Apply streak multiplier to base Scrabble score
   baseScore *= streakMultiplier
 
-  // Apply length multiplier
-  const lengthMultiplier = getLengthMultiplier(word.length)
-  let score = baseScore * lengthMultiplier
-
   // Apply chain multiplier
-  score *= chainMultiplier
-
-  // Apply rare word bonus
-  if (isRare) {
-    score *= 1.5
-  }
+  const score = baseScore * chainMultiplier
 
   return Math.round(score)
 }
@@ -81,11 +71,9 @@ export function calculateTotalScore(words: string[], multipliers: number[]): num
   for (let i = 0; i < words.length; i++) {
     const word = words[i]
     const multiplier = multipliers[i] || 1
-    const rare = isRareWord(word)
 
     total += calculateWordScore(word, {
       chainMultiplier: multiplier,
-      isRare: rare,
     })
   }
 
