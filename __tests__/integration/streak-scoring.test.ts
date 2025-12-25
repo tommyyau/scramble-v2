@@ -260,6 +260,67 @@ describe('Reversible Word Bonus', () => {
   })
 })
 
+describe('Overlapping Words Bonus', () => {
+  test('S-P-O-T finds overlapping words and reversals', () => {
+    const state = createTestState({
+      blocks: [
+        // S-P-O-T contains multiple words:
+        // TOPS (4-letter, reverse) = T(1) + O(1) + P(3) + S(1) = 6
+        // POT (3-letter) = P(3) + O(1) + T(1) = 5
+        // TOP (3-letter, reverse) = T(1) + O(1) + P(3) = 5
+        // Total = 16
+        block(0, 7, 'S', true),
+        block(1, 7, 'P', true),
+        block(2, 7, 'O', true),
+        block(3, 7, 'T', true),
+      ],
+    })
+
+    const result = processChainReaction(state, 1)
+
+    expect(result.wordsFound).toContain('TOPS')
+    expect(result.wordsFound).toContain('POT')
+    expect(result.wordsFound).toContain('TOP')
+    expect(result.score).toBe(16)
+  })
+
+  test('S-P-O-T with streak multiplier applies to all words', () => {
+    const state = createTestState({
+      blocks: [
+        block(0, 7, 'S', true),
+        block(1, 7, 'P', true),
+        block(2, 7, 'O', true),
+        block(3, 7, 'T', true),
+      ],
+    })
+
+    const result = processChainReaction(state, 3) // streak = 3
+
+    // Base 16 * streak 3 = 48
+    expect(result.score).toBe(48)
+  })
+
+  test('longer sequences find more sub-words', () => {
+    const state = createTestState({
+      blocks: [
+        // S-T-O-P-S contains overlapping words:
+        // STOPS, POTS, TOPS, STOP, POT, TOP, etc.
+        block(0, 7, 'S', true),
+        block(1, 7, 'T', true),
+        block(2, 7, 'O', true),
+        block(3, 7, 'P', true),
+        block(4, 7, 'S', true),
+      ],
+    })
+
+    const result = processChainReaction(state, 1)
+
+    // Should find multiple overlapping words
+    expect(result.wordsFound.length).toBeGreaterThanOrEqual(4)
+    expect(result.score).toBeGreaterThan(16) // More than S-P-O-T alone
+  })
+})
+
 describe('Scoring Formula Verification', () => {
   test('formula: base × streak × chain', () => {
     // Verify the scoring formula with calculateWordScore directly
