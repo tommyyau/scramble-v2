@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { GameState, GameMode, ClearedPosition } from '../lib/types'
 import { createInitialState, spawnBlock, tick, isGameOver } from '../lib/engine/core'
 import { moveBlock, hardDrop, applyGravity } from '../lib/engine/grid'
-import { processChainReaction } from '../lib/engine/chains'
+import { detectAndMarkWords, clearCelebratingBlocks, processChainReaction } from '../lib/engine/chains'
 import { calculateWordScore } from '../lib/engine/scoring'
+import { getRandomBonusWord } from '../lib/engine/bonus-word'
 import {
   playWordClear,
   playChain,
@@ -21,6 +22,8 @@ interface FoundWordEvent {
   score: number
   id: number
   chainCount: number
+  streakCount: number
+  bonusWordMatched: boolean
 }
 
 export interface WordWithScore {
@@ -52,6 +55,8 @@ interface GameStore extends GameState {
   // Streak system
   currentStreak: number
   streakBroken: boolean
+  // Bonus word system
+  bonusWordMatched: boolean
   // Actions
   startGame: (mode: GameMode) => void
   pauseGame: () => void
@@ -68,6 +73,7 @@ interface GameStore extends GameState {
   clearLevelUp: () => void
   levelUp: () => void
   clearStreakBroken: () => void
+  clearBonusWordMatched: () => void
 }
 
 let wordEventId = 0
@@ -86,6 +92,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameOver: false,
   isPaused: false,
   mode: 'classic',
+  currentBonusWord: null,
   lastFoundWord: null,
   isCelebrating: false,
   isShaking: false,
@@ -100,9 +107,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
   levelUpEvent: null,
   currentStreak: 0,
   streakBroken: false,
+  bonusWordMatched: false,
 
   endCelebration: () => {
-    set({ isCelebrating: false })
+    const state = get()
+
+    // Phase 2: Clear celebrating blocks and apply gravity
+    let newState = clearCelebratingBlocks(state)
+
+    // Process any chain reactions that happen after gravity
+    // (blocks falling may form new words)
+    const chainResult = processChainReaction(newState, {
+      streakMultiplier: state.currentStreak,
+    })
+
+    // Apply gravity after chains
+    newState = applyGravity(chainResult)
+
+    // Check game over
+    if (isGameOver(newState)) {
+      playGameOver()
+      set({
+        ...newState,
+        gameOver: true,
+        isCelebrating: false,
+      })
+      return
+    }
+
+    // Spawn next block
+    const nextState = spawnBlock(newState, newState.nextLetter!)
+
+    set({
+      blocks: nextState.blocks,
+      nextLetter: nextState.nextLetter,
+      score: chainResult.score,
+      wordsFound: chainResult.wordsFound,
+      isCelebrating: false,
+    })
   },
 
   endShake: () => {
@@ -119,6 +161,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   clearStreakBroken: () => {
     set({ streakBroken: false })
+  },
+
+  clearBonusWordMatched: () => {
+    set({ bonusWordMatched: false })
   },
 
   levelUp: () => {
@@ -138,7 +184,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Actions
   startGame: (mode: GameMode) => {
     const initialState = createInitialState(mode)
+    console.log('Initial state bonus word:', initialState.currentBonusWord)
     const stateWithBlock = spawnBlock(initialState, initialState.nextLetter!)
+    console.log('After spawn bonus word:', stateWithBlock.currentBonusWord)
     set({ ...stateWithBlock })
   },
 
@@ -180,79 +228,77 @@ export const useGameStore = create<GameStore>((set, get) => ({
     playDrop()
 
     // Hard drop
-    let newState = hardDrop(state)
+    const droppedState = hardDrop(state)
 
     // Play block land sound
     playBlockLand()
 
-    // Process chains
-    const chainResult = processChainReaction(newState)
+    // Calculate streak multiplier
+    const streakMultiplier = state.currentStreak + 1
+
+    // Phase 1: Detect words and mark blocks as celebrating (don't remove yet)
+    const wordResult = detectAndMarkWords(droppedState, { streakMultiplier })
 
     // Check for new words found
-    const newWords = chainResult.wordsFound.filter(
+    const newWords = wordResult.wordsFound.filter(
       w => !state.wordsFound.includes(w)
     )
-    const scoreGained = chainResult.score - state.score
-
-    // Apply gravity after chains
-    newState = applyGravity(chainResult)
-
-    // Check game over
-    if (isGameOver(newState)) {
-      playGameOver()
-      set({
-        ...newState,
-        gameOver: true,
-      })
-      return
-    }
-
-    // Spawn next block
-    const nextState = spawnBlock(newState, newState.nextLetter!)
-
-    // Emit word found event if words were found (keep previous if none found)
-    const updates: Partial<GameStore> = {
-      blocks: nextState.blocks,
-      nextLetter: nextState.nextLetter,
-      score: chainResult.score,
-      wordsFound: chainResult.wordsFound,
-    }
+    const scoreGained = wordResult.score - state.score
 
     if (newWords.length > 0) {
-      // Play sounds for word clear and chains
+      // Words found! Keep blocks glowing, don't spawn next block yet
+      // Play sounds for word clear
       playWordClear()
-      if (chainResult.chainCount > 1) {
-        playChain(chainResult.chainCount)
+      if (wordResult.chainCount > 1) {
+        playChain(wordResult.chainCount)
       }
 
       // Update streak
       const newStreak = state.currentStreak + 1
-      updates.currentStreak = newStreak
-      updates.streakBroken = false
 
       // Play streak sound for consecutive finds
       if (newStreak > 1) {
         playStreakContinue(newStreak)
       }
 
+      // Handle bonus word match
+      const updates: Partial<GameStore> = {
+        blocks: wordResult.blocks, // Blocks with isCelebrating: true
+        score: wordResult.score,
+        wordsFound: wordResult.wordsFound,
+        currentStreak: newStreak,
+        streakBroken: false,
+      }
+
+      if (wordResult.bonusWordMatched && state.currentBonusWord) {
+        updates.bonusWordsFound = [...state.bonusWordsFound, state.currentBonusWord]
+        updates.currentBonusWord = getRandomBonusWord()
+        updates.bonusWordMatched = true
+      }
+
       // Update stats
       const currentStats = state.stats
       const longestNew = newWords.reduce((a, b) => a.length > b.length ? a : b, '')
       const newLongest = longestNew.length > currentStats.longestWord.length ? longestNew : currentStats.longestWord
-      const newBestChain = Math.max(currentStats.bestChain, chainResult.chainCount)
+      const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
       const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
       // Calculate individual word scores for history
       const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
         word,
-        score: calculateWordScore(word, chainResult.chainCount),
+        score: calculateWordScore(word, {
+          chainMultiplier: wordResult.chainCount,
+          streakMultiplier: newStreak,
+        }),
       }))
 
       updates.lastFoundWord = {
         word: newWords.join(', '),
         score: scoreGained,
         id: ++wordEventId,
-        chainCount: chainResult.chainCount,
+        chainCount: wordResult.chainCount,
+        streakCount: newStreak,
+        bonusWordMatched: wordResult.bonusWordMatched,
       }
       updates.isCelebrating = true
       updates.stats = {
@@ -263,26 +309,47 @@ export const useGameStore = create<GameStore>((set, get) => ({
         wordHistory: [...currentStats.wordHistory, ...newWordsWithScores],
       }
 
-      // Trigger particles at cleared positions
-      if (chainResult.clearedPositions.length > 0) {
+      // Trigger particles at cleared positions (will animate alongside glowing blocks)
+      if (wordResult.clearedPositions.length > 0) {
         updates.particleEvent = {
           id: wordEventId,
-          positions: chainResult.clearedPositions,
+          positions: wordResult.clearedPositions,
         }
       }
 
-      // Trigger screen shake on word finds (subtle for single, stronger for chains)
+      // Trigger screen shake on word finds
       updates.isShaking = true
+
+      set(updates)
     } else {
-      // No words found - break streak if we had one
+      // No words found - proceed immediately (no celebration)
+      // Check game over
+      if (isGameOver(droppedState)) {
+        playGameOver()
+        set({
+          ...droppedState,
+          gameOver: true,
+        })
+        return
+      }
+
+      // Spawn next block immediately
+      const nextState = spawnBlock(droppedState, droppedState.nextLetter!)
+
+      const updates: Partial<GameStore> = {
+        blocks: nextState.blocks,
+        nextLetter: nextState.nextLetter,
+      }
+
+      // Break streak if we had one
       if (state.currentStreak > 0) {
         playStreakBroken()
         updates.currentStreak = 0
         updates.streakBroken = true
       }
-    }
 
-    set(updates)
+      set(updates)
+    }
   },
 
   gameTick: () => {
@@ -300,74 +367,72 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Block just locked - play land sound
       playBlockLand()
 
-      // Process chains
-      const chainResult = processChainReaction(newState)
+      // Calculate streak multiplier
+      const streakMultiplier = state.currentStreak + 1
+
+      // Phase 1: Detect words and mark blocks as celebrating (don't remove yet)
+      const wordResult = detectAndMarkWords(newState, { streakMultiplier })
 
       // Check for new words found
-      const newWords = chainResult.wordsFound.filter(
+      const newWords = wordResult.wordsFound.filter(
         w => !state.wordsFound.includes(w)
       )
-      const scoreGained = chainResult.score - state.score
-
-      // Apply gravity
-      newState = applyGravity(chainResult)
-
-      // Check game over
-      if (isGameOver(newState)) {
-        playGameOver()
-        set({
-          ...newState,
-          gameOver: true,
-        })
-        return
-      }
-
-      // Spawn next block
-      const nextState = spawnBlock(newState, newState.nextLetter!)
-
-      // Emit word found event if words were found (keep previous if none found)
-      const updates: Partial<GameStore> = {
-        blocks: nextState.blocks,
-        nextLetter: nextState.nextLetter,
-        score: chainResult.score,
-        wordsFound: chainResult.wordsFound,
-      }
+      const scoreGained = wordResult.score - state.score
 
       if (newWords.length > 0) {
+        // Words found! Keep blocks glowing, don't spawn next block yet
         // Play sounds for word clear and chains
         playWordClear()
-        if (chainResult.chainCount > 1) {
-          playChain(chainResult.chainCount)
+        if (wordResult.chainCount > 1) {
+          playChain(wordResult.chainCount)
         }
 
         // Update streak
         const newStreak = state.currentStreak + 1
-        updates.currentStreak = newStreak
-        updates.streakBroken = false
 
         // Play streak sound for consecutive finds
         if (newStreak > 1) {
           playStreakContinue(newStreak)
         }
 
+        // Handle bonus word match
+        const updates: Partial<GameStore> = {
+          blocks: wordResult.blocks, // Blocks with isCelebrating: true
+          score: wordResult.score,
+          wordsFound: wordResult.wordsFound,
+          currentStreak: newStreak,
+          streakBroken: false,
+        }
+
+        if (wordResult.bonusWordMatched && state.currentBonusWord) {
+          updates.bonusWordsFound = [...state.bonusWordsFound, state.currentBonusWord]
+          updates.currentBonusWord = getRandomBonusWord()
+          updates.bonusWordMatched = true
+        }
+
         // Update stats
         const currentStats = state.stats
         const longestNew = newWords.reduce((a, b) => a.length > b.length ? a : b, '')
         const newLongest = longestNew.length > currentStats.longestWord.length ? longestNew : currentStats.longestWord
-        const newBestChain = Math.max(currentStats.bestChain, chainResult.chainCount)
+        const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
         const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
-        // Calculate individual word scores for history
+        // Calculate individual word scores for history (with streak multiplier)
         const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
           word,
-          score: calculateWordScore(word, chainResult.chainCount),
+          score: calculateWordScore(word, {
+            chainMultiplier: wordResult.chainCount,
+            streakMultiplier: newStreak,
+          }),
         }))
 
         updates.lastFoundWord = {
           word: newWords.join(', '),
           score: scoreGained,
           id: ++wordEventId,
-          chainCount: chainResult.chainCount,
+          chainCount: wordResult.chainCount,
+          streakCount: newStreak,
+          bonusWordMatched: wordResult.bonusWordMatched,
         }
         updates.isCelebrating = true
         updates.stats = {
@@ -378,26 +443,50 @@ export const useGameStore = create<GameStore>((set, get) => ({
           wordHistory: [...currentStats.wordHistory, ...newWordsWithScores],
         }
 
-        // Trigger particles at cleared positions
-        if (chainResult.clearedPositions.length > 0) {
+        // Trigger particles at cleared positions (will animate alongside glowing blocks)
+        if (wordResult.clearedPositions.length > 0) {
           updates.particleEvent = {
             id: wordEventId,
-            positions: chainResult.clearedPositions,
+            positions: wordResult.clearedPositions,
           }
         }
 
-        // Trigger screen shake on word finds (subtle for single, stronger for chains)
+        // Trigger screen shake on word finds
         updates.isShaking = true
+
+        set(updates)
       } else {
-        // No words found - break streak if we had one
+        // No words found - proceed immediately (no celebration)
+        // Apply gravity
+        newState = applyGravity(newState)
+
+        // Check game over
+        if (isGameOver(newState)) {
+          playGameOver()
+          set({
+            ...newState,
+            gameOver: true,
+          })
+          return
+        }
+
+        // Spawn next block
+        const nextState = spawnBlock(newState, newState.nextLetter!)
+
+        const updates: Partial<GameStore> = {
+          blocks: nextState.blocks,
+          nextLetter: nextState.nextLetter,
+        }
+
+        // Break streak if we had one
         if (state.currentStreak > 0) {
           playStreakBroken()
           updates.currentStreak = 0
           updates.streakBroken = true
         }
-      }
 
-      set(updates)
+        set(updates)
+      }
     } else {
       set({ blocks: newState.blocks })
     }
@@ -416,6 +505,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       chainMultiplier: 1,
       gameOver: false,
       isPaused: false,
+      currentBonusWord: null,
       lastFoundWord: null,
       isCelebrating: false,
       isShaking: false,
@@ -430,6 +520,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       levelUpEvent: null,
       currentStreak: 0,
       streakBroken: false,
+      bonusWordMatched: false,
     })
   },
 }))

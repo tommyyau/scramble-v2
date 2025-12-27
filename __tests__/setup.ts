@@ -49,6 +49,7 @@ export function createTestState(overrides: Partial<GameState> = {}): GameState {
     gameOver: false,
     isPaused: false,
     mode: 'classic',
+    currentBonusWord: null,
     ...overrides,
   }
 }

@@ -1,12 +1,24 @@
 import { Block, GameState, GameMode } from '../types'
-import { SPAWN_POSITION, LETTER_COLORS, GRID_HEIGHT } from '../constants'
+import { SPAWN_POSITION, LETTER_COLORS, GRID_HEIGHT, MODE_CONFIGS } from '../constants'
 import { generateLetter, resetDailyLetterIndex } from './smart-letters'
+import { getRandomBonusWord, getSeededBonusWord } from './bonus-word'
 
 // Global block ID counter
 let blockIdCounter = 0
 
 export function resetBlockIdCounter() {
   blockIdCounter = 0
+}
+
+/**
+ * Get the daily seed (same for all players on a given day)
+ */
+function getDailySeed(): number {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const day = now.getDate()
+  return year * 10000 + month * 100 + day
 }
 
 /**
@@ -19,6 +31,15 @@ export function createInitialState(mode: GameMode): GameState {
   }
 
   const nextLetter = generateLetter([], mode)
+
+  // Initialize bonus word based on mode
+  const modeConfig = MODE_CONFIGS[mode]
+  let currentBonusWord: string | null = null
+  if (modeConfig.hasBonusWords) {
+    currentBonusWord = mode === 'daily'
+      ? getSeededBonusWord(getDailySeed())
+      : getRandomBonusWord()
+  }
 
   return {
     blocks: [],
@@ -33,6 +54,7 @@ export function createInitialState(mode: GameMode): GameState {
     gameOver: false,
     isPaused: false,
     mode,
+    currentBonusWord,
   }
 }
 

@@ -9,6 +9,7 @@ export interface Block {
   color: string
   isAnimating?: boolean
   isDisappearing?: boolean
+  isCelebrating?: boolean  // Block is part of a found word, glowing before removal
 }
 
 export interface FoundWord {
@@ -36,6 +37,7 @@ export interface GameState {
   gameOver: boolean
   isPaused: boolean
   mode: GameMode
+  currentBonusWord: string | null
 }
 
 export interface ClearedPosition {
@@ -48,6 +50,7 @@ export interface ChainResult extends GameState {
   chainCount: number
   chainMultipliers: number[]
   clearedPositions: ClearedPosition[]
+  bonusWordMatched: boolean
 }
 
 export type GameMode = 'classic' | 'zen' | 'sprint' | 'daily'

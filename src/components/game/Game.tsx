@@ -70,6 +70,8 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     stats,
     particleEvent,
     levelUpEvent,
+    currentStreak,
+    currentBonusWord,
     startGame,
     pauseGame,
     resumeGame,
@@ -292,7 +294,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
       {/* Main game area */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
         {/* Stats row */}
-        <div className="flex items-start justify-between w-full max-w-md mb-4 gap-4">
+        <div className="flex items-start justify-between w-full max-w-md mb-2 gap-4">
           <ScoreDisplay score={score} />
           {mode !== 'zen' && (
             <div className="text-center min-w-[50px]">
@@ -312,6 +314,29 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
           <WordList words={wordsFound} />
         </div>
 
+        {/* Multiplier indicators row */}
+        <div className="flex items-center justify-center gap-3 w-full max-w-md mb-3">
+          {/* Current streak */}
+          {currentStreak > 0 && (
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${currentStreak > 1 ? 'bg-orange-500/20 border border-orange-500/50' : 'bg-slate-700/50'}`}>
+              <span className="text-xs text-orange-400 font-medium">STREAK</span>
+              <span className={`text-sm font-bold ${currentStreak > 1 ? 'text-orange-400' : 'text-slate-400'}`}>
+                {currentStreak}×
+              </span>
+            </div>
+          )}
+
+          {/* Bonus word target */}
+          {currentBonusWord && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/50">
+              <span className="text-xs text-yellow-400 font-medium">BONUS</span>
+              <span className="text-sm font-bold text-yellow-400 tracking-wider">
+                {currentBonusWord}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Game board */}
         <div className={`relative ${isShaking ? 'animate-shake' : ''}`}>
           <Board
@@ -329,6 +354,9 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
               key={lastFoundWord.id}
               word={lastFoundWord.word}
               score={lastFoundWord.score}
+              chainCount={lastFoundWord.chainCount}
+              streakCount={lastFoundWord.streakCount}
+              bonusWordMatched={lastFoundWord.bonusWordMatched}
             />
           )}
 

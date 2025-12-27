@@ -42,13 +42,25 @@ function BlockComponent({ block, cellSize }: BlockProps) {
   const style = getBlockStyle(block.letter)
   const baseStyle = blockStyles[block.letter] || defaultStyle
 
+  // Determine box shadow based on state
+  let boxShadow: string
+  if (block.isCelebrating) {
+    // Glowing celebration effect - bright, pulsing glow
+    boxShadow = `0 0 15px ${baseStyle.bg}, 0 0 30px ${baseStyle.bg}, 0 0 45px ${baseStyle.bg}, inset 0 0 15px rgba(255,255,255,0.6)`
+  } else if (block.isDisappearing) {
+    boxShadow = `0 0 20px ${baseStyle.bg}, 0 0 40px ${baseStyle.bg}, inset 0 0 10px rgba(255,255,255,0.5)`
+  } else {
+    boxShadow = `inset 0 -2px 4px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.1)`
+  }
+
   return (
     <div
       className={`
         absolute flex items-center justify-center
         rounded-lg font-bold
+        ${block.isCelebrating ? 'animate-celebrate' : ''}
         ${block.isDisappearing ? 'animate-pop' : ''}
-        ${block.locked && !block.isDisappearing ? 'animate-land' : ''}
+        ${block.locked && !block.isDisappearing && !block.isCelebrating ? 'animate-land' : ''}
       `}
       style={{
         left: block.x * cellSize,
@@ -57,9 +69,7 @@ function BlockComponent({ block, cellSize }: BlockProps) {
         height: cellSize - 2,
         fontSize: cellSize * 0.5,
         ...style,
-        boxShadow: block.isDisappearing
-          ? `0 0 20px ${baseStyle.bg}, 0 0 40px ${baseStyle.bg}, inset 0 0 10px rgba(255,255,255,0.5)`
-          : `inset 0 -2px 4px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.1)`,
+        boxShadow,
         // Smooth position transitions for movement and falling
         transition: 'left 0.1s ease-out, top 0.05s ease-in',
       }}

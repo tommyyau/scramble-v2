@@ -1,5 +1,11 @@
 import { LETTER_POINTS } from '../constants'
 
+export interface ScoreOptions {
+  chainMultiplier?: number
+  streakMultiplier?: number
+  bonusMultiplier?: number
+}
+
 /**
  * Calculate the score for a single letter
  */
@@ -9,17 +15,26 @@ export function calculateLetterScore(letter: string): number {
 
 /**
  * Calculate the score for a word
- * Score = sum of letter values * chain multiplier
+ * Score = sum of letter values * chain * streak * bonus
  */
-export function calculateWordScore(word: string, chainMultiplier: number): number {
+export function calculateWordScore(word: string, options: ScoreOptions | number = {}): number {
+  // Support legacy number argument for backwards compatibility
+  const opts: ScoreOptions = typeof options === 'number'
+    ? { chainMultiplier: options }
+    : options
+
+  const chainMultiplier = opts.chainMultiplier ?? 1
+  const streakMultiplier = opts.streakMultiplier ?? 1
+  const bonusMultiplier = opts.bonusMultiplier ?? 1
+
   // Base score: sum of letter values
   let baseScore = 0
   for (const letter of word.toUpperCase()) {
     baseScore += calculateLetterScore(letter)
   }
 
-  // Apply chain multiplier
-  const score = baseScore * chainMultiplier
+  // Apply all multipliers
+  const score = baseScore * chainMultiplier * streakMultiplier * bonusMultiplier
 
   return Math.round(score)
 }
