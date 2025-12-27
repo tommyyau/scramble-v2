@@ -102,14 +102,14 @@ export const MODE_CONFIGS = {
     dropSpeed: INITIAL_DROP_SPEED, // Same speed as classic, but never increases
     speedIncreases: false,
     hasTimer: false,
-    hasBonusWords: false,
+    hasBonusWords: true,
   },
   sprint: {
     dropSpeed: INITIAL_DROP_SPEED * 0.7, // Faster
     speedIncreases: true,
     hasTimer: true,
     timerDuration: 120000, // 2 minutes
-    hasBonusWords: false,
+    hasBonusWords: true,
   },
   daily: {
     dropSpeed: INITIAL_DROP_SPEED,
