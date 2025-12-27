@@ -8,6 +8,7 @@ interface StoredScore {
   wordsFound: number
   longestWord: string
   bestChain: number
+  bestStreak: number
   mode: 'classic' | 'zen' | 'sprint' | 'daily'
   date: string
   wordHistory?: { word: string; score: number }[]
@@ -72,6 +73,7 @@ export default async function handler(req: Request): Promise<Response> {
       wordsFound: s.wordsFound,
       longestWord: s.longestWord,
       bestChain: s.bestChain,
+      bestStreak: s.bestStreak,
       mode: s.mode,
       date: s.date,
       wordHistory: s.wordHistory,
