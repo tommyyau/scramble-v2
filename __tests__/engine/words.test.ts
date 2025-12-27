@@ -185,6 +185,49 @@ describe('Combined Word Finding', () => {
     expect(wordTexts).toContain('CATS')
   })
 
+  test('finds words within words and reversed words (POTS example)', () => {
+    // POTS (P-O-T-S) contains:
+    // - POTS (full word, positions 0,1,2,3)
+    // - STOP (reverse of POTS)
+    // - POT (substring, positions 0,1,2)
+    // - TOP (reverse of POT)
+    const blocks = [
+      block(0, 7, 'P', true),
+      block(1, 7, 'O', true),
+      block(2, 7, 'T', true),
+      block(3, 7, 'S', true),
+    ]
+
+    const words = findWords(blocks)
+    const wordTexts = words.map(w => w.word)
+
+    // Full word and its reverse
+    expect(wordTexts).toContain('POTS')
+    expect(wordTexts).toContain('STOP')
+
+    // Substring and its reverse
+    expect(wordTexts).toContain('POT')
+    expect(wordTexts).toContain('TOP')
+
+    // Should find exactly 4 valid words
+    expect(words.length).toBe(4)
+  })
+
+  test('finds CATS and CAT (word within word)', () => {
+    const blocks = [
+      block(0, 7, 'C', true),
+      block(1, 7, 'A', true),
+      block(2, 7, 'T', true),
+      block(3, 7, 'S', true),
+    ]
+
+    const words = findWords(blocks)
+    const wordTexts = words.map(w => w.word)
+
+    expect(wordTexts).toContain('CATS')
+    expect(wordTexts).toContain('CAT')
+  })
+
   test('finds intersecting words', () => {
     // CAT horizontal, intersecting with vertical word using A
     const blocks = [

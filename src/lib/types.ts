@@ -15,14 +15,12 @@ export interface FoundWord {
   word: string
   blocks: Block[]
   direction: 'horizontal' | 'vertical'
-  isRare: boolean
 }
 
 export interface WordMatch {
   word: string
   blocks: { x: number; y: number }[]
   score: number
-  isRare: boolean
 }
 
 export interface GameState {
@@ -54,10 +52,6 @@ export interface ChainResult extends GameState {
 
 export type GameMode = 'classic' | 'zen' | 'sprint' | 'daily'
 
-export interface ScoreOptions {
-  chainMultiplier: number
-  isRare: boolean
-}
 
 export interface GameSettings {
   speed: number

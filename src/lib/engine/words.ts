@@ -1,7 +1,7 @@
 import { Block, GameState, FoundWord } from '../types'
 import { GRID_WIDTH, GRID_HEIGHT, MIN_WORD_LENGTH } from '../constants'
 import { isValidWord } from '../dictionary/words'
-import { calculateWordScore, isRareWord } from './scoring'
+import { calculateWordScore } from './scoring'
 
 /**
  * Find all horizontal words in the grid
@@ -42,7 +42,6 @@ export function findHorizontalWords(blocks: Block[]): FoundWord[] {
                   word,
                   blocks: segment,
                   direction: 'horizontal',
-                  isRare: isRareWord(word),
                 })
               }
 
@@ -52,7 +51,6 @@ export function findHorizontalWords(blocks: Block[]): FoundWord[] {
                   word: reversed,
                   blocks: segment,
                   direction: 'horizontal',
-                  isRare: isRareWord(reversed),
                 })
               }
             }
@@ -105,7 +103,6 @@ export function findVerticalWords(blocks: Block[]): FoundWord[] {
                   word,
                   blocks: segment,
                   direction: 'vertical',
-                  isRare: isRareWord(word),
                 })
               }
 
@@ -115,7 +112,6 @@ export function findVerticalWords(blocks: Block[]): FoundWord[] {
                   word: reversed,
                   blocks: segment,
                   direction: 'vertical',
-                  isRare: isRareWord(reversed),
                 })
               }
             }
@@ -176,10 +172,7 @@ export function checkAndClearWords(state: GameState): GameState {
   })
 
   uniqueWords.forEach(word => {
-    const score = calculateWordScore(word.word, {
-      chainMultiplier: state.chainMultiplier,
-      isRare: word.isRare,
-    })
+    const score = calculateWordScore(word.word, state.chainMultiplier)
     totalScore += score
     if (!wordTexts.includes(word.word)) {
       wordTexts.push(word.word)

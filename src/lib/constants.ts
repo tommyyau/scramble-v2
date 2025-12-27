@@ -44,11 +44,6 @@ export function getDropSpeedForLevel(baseSpeed: number, level: number): number {
   return Math.max(speed, MIN_DROP_SPEED)
 }
 
-// Scoring
-export const LENGTH_BONUS_BASE = 1.5 // Exponential base for length bonus
-export const RARE_WORD_MULTIPLIER = 1.5
-export const CHAIN_MULTIPLIER_INCREMENT = 1 // Each chain adds 1x
-
 // Scrabble letter weights (frequency)
 export const SCRABBLE_WEIGHTS: Record<string, number> = {
   A: 9, B: 2, C: 2, D: 4, E: 12, F: 2, G: 3, H: 2, I: 9,

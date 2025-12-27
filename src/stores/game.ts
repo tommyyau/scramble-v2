@@ -3,7 +3,7 @@ import { GameState, GameMode, ClearedPosition } from '../lib/types'
 import { createInitialState, spawnBlock, tick, isGameOver } from '../lib/engine/core'
 import { moveBlock, hardDrop, applyGravity } from '../lib/engine/grid'
 import { processChainReaction } from '../lib/engine/chains'
-import { calculateWordScore, isRareWord } from '../lib/engine/scoring'
+import { calculateWordScore } from '../lib/engine/scoring'
 import {
   playWordClear,
   playChain,
@@ -245,7 +245,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Calculate individual word scores for history
       const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
         word,
-        score: calculateWordScore(word, { chainMultiplier: chainResult.chainCount, isRare: isRareWord(word) }),
+        score: calculateWordScore(word, chainResult.chainCount),
       }))
 
       updates.lastFoundWord = {
@@ -360,7 +360,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         // Calculate individual word scores for history
         const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
           word,
-          score: calculateWordScore(word, { chainMultiplier: chainResult.chainCount, isRare: isRareWord(word) }),
+          score: calculateWordScore(word, chainResult.chainCount),
         }))
 
         updates.lastFoundWord = {

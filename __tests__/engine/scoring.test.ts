@@ -2,8 +2,6 @@ import { describe, test, expect } from 'vitest'
 import {
   calculateWordScore,
   calculateLetterScore,
-  getLengthMultiplier,
-  isRareWord,
   calculateTotalScore,
 } from '../../src/lib/engine/scoring'
 
@@ -49,114 +47,57 @@ describe('Letter Scoring', () => {
   })
 })
 
-describe('Length Multiplier', () => {
-  test('3-letter words get 1x multiplier', () => {
-    expect(getLengthMultiplier(3)).toBe(1)
-  })
-
-  test('4-letter words get 1.5x multiplier', () => {
-    expect(getLengthMultiplier(4)).toBe(1.5)
-  })
-
-  test('5-letter words get 2x multiplier', () => {
-    expect(getLengthMultiplier(5)).toBe(2)
-  })
-
-  test('6-letter words get 3x multiplier', () => {
-    expect(getLengthMultiplier(6)).toBe(3)
-  })
-
-  test('7-letter words get 4x multiplier', () => {
-    expect(getLengthMultiplier(7)).toBe(4)
-  })
-
-  test('8-letter words get 5x multiplier', () => {
-    expect(getLengthMultiplier(8)).toBe(5)
-  })
-})
-
 describe('Word Scoring', () => {
-  test('CAT scores correctly (3 letters, common)', () => {
-    // C=3 + A=1 + T=1 = 5 base
-    // 3-letter multiplier = 1x
-    const score = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
+  test('CAT scores as sum of letter values', () => {
+    // C=3 + A=1 + T=1 = 5
+    const score = calculateWordScore('CAT', 1)
     expect(score).toBe(5)
   })
 
-  test('CATS scores more than CAT (length bonus)', () => {
-    const catScore = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
-    const catsScore = calculateWordScore('CATS', { chainMultiplier: 1, isRare: false })
-    expect(catsScore).toBeGreaterThan(catScore)
+  test('DOG scores as sum of letter values', () => {
+    // D=2 + O=1 + G=2 = 5
+    const score = calculateWordScore('DOG', 1)
+    expect(score).toBe(5)
   })
 
-  test('longer words get higher scores', () => {
-    const scores = [
-      calculateWordScore('CAT', { chainMultiplier: 1, isRare: false }),
-      calculateWordScore('CATS', { chainMultiplier: 1, isRare: false }),
-      calculateWordScore('HOUSE', { chainMultiplier: 1, isRare: false }),
-      calculateWordScore('BRIDGE', { chainMultiplier: 1, isRare: false }),
-    ]
+  test('words with high-value letters score higher', () => {
+    const catScore = calculateWordScore('CAT', 1) // C=3 + A=1 + T=1 = 5
+    const jazScore = calculateWordScore('JAZ', 1) // J=8 + A=1 + Z=10 = 19
 
-    // Each should be larger than the previous
-    for (let i = 1; i < scores.length; i++) {
-      expect(scores[i]).toBeGreaterThan(scores[i - 1])
-    }
-  })
-
-  test('chain multiplier applies correctly', () => {
-    const base = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
-    const chain2 = calculateWordScore('CAT', { chainMultiplier: 2, isRare: false })
-    const chain3 = calculateWordScore('CAT', { chainMultiplier: 3, isRare: false })
-
-    expect(chain2).toBe(base * 2)
-    expect(chain3).toBe(base * 3)
-  })
-
-  test('rare words get 1.5x bonus', () => {
-    const common = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
-    const rare = calculateWordScore('CAT', { chainMultiplier: 1, isRare: true })
-
-    expect(rare).toBe(Math.round(common * 1.5))
-  })
-
-  test('chain and rare bonuses stack', () => {
-    const base = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
-    const stacked = calculateWordScore('CAT', { chainMultiplier: 2, isRare: true })
-
-    // Should be base * 2 (chain) * 1.5 (rare)
-    expect(stacked).toBe(Math.round(base * 2 * 1.5))
-  })
-
-  test('words with rare letters score higher', () => {
-    const catScore = calculateWordScore('CAT', { chainMultiplier: 1, isRare: false })
-    const jazScore = calculateWordScore('JAZ', { chainMultiplier: 1, isRare: false }) // Hypothetical
-
-    // JAZ has J=8 + A=1 + Z=10 = 19 vs CAT's C=3 + A=1 + T=1 = 5
     expect(jazScore).toBeGreaterThan(catScore)
-  })
-})
-
-describe('Rare Word Detection', () => {
-  test('common words are not rare', () => {
-    expect(isRareWord('CAT')).toBe(false)
-    expect(isRareWord('DOG')).toBe(false)
-    expect(isRareWord('THE')).toBe(false)
-    expect(isRareWord('AND')).toBe(false)
-    expect(isRareWord('RUN')).toBe(false)
+    expect(jazScore).toBe(19)
   })
 
-  test('uncommon words are rare', () => {
-    // Words with Q, X, Z, or unusual combinations
-    expect(isRareWord('QUIZ')).toBe(true)
-    expect(isRareWord('JAZZ')).toBe(true)
-    expect(isRareWord('JINX')).toBe(true)
+  test('chain multiplier doubles score on 2nd chain', () => {
+    const base = calculateWordScore('CAT', 1) // 5
+    const chain2 = calculateWordScore('CAT', 2) // 10
+
+    expect(base).toBe(5)
+    expect(chain2).toBe(10)
   })
 
-  test('words with rare letters tend to be rare', () => {
-    // Any word containing Q, X, Z, J is considered rare
-    expect(isRareWord('QUILT')).toBe(true)
-    expect(isRareWord('MIXER')).toBe(true)
-    expect(isRareWord('WALTZ')).toBe(true)
+  test('chain multiplier triples score on 3rd chain', () => {
+    const base = calculateWordScore('CAT', 1) // 5
+    const chain3 = calculateWordScore('CAT', 3) // 15
+
+    expect(base).toBe(5)
+    expect(chain3).toBe(15)
+  })
+
+  test('chain multiplier applies correctly for any level', () => {
+    const base = calculateWordScore('DOG', 1) // D=2 + O=1 + G=2 = 5
+    const chain5 = calculateWordScore('DOG', 5) // 25
+
+    expect(chain5).toBe(base * 5)
+  })
+
+  test('word length does not affect score (no length bonus)', () => {
+    // All these words have similar letter values
+    const cat = calculateWordScore('CAT', 1) // C=3 + A=1 + T=1 = 5
+    const cats = calculateWordScore('CATS', 1) // C=3 + A=1 + T=1 + S=1 = 6
+
+    // CATS only scores 1 more because of the extra S, not because it's longer
+    expect(cats).toBe(cat + 1)
   })
 })
 
@@ -167,10 +108,10 @@ describe('Total Score Calculation', () => {
 
     const total = calculateTotalScore(words, multipliers)
     const expected =
-      calculateWordScore('CAT', { chainMultiplier: 1, isRare: false }) +
-      calculateWordScore('DOG', { chainMultiplier: 1, isRare: false })
+      calculateWordScore('CAT', 1) + calculateWordScore('DOG', 1) // 5 + 5 = 10
 
     expect(total).toBe(expected)
+    expect(total).toBe(10)
   })
 
   test('applies different multipliers per word', () => {
@@ -178,11 +119,8 @@ describe('Total Score Calculation', () => {
     const multipliers = [1, 2]
 
     const total = calculateTotalScore(words, multipliers)
-    const expected =
-      calculateWordScore('CAT', { chainMultiplier: 1, isRare: false }) +
-      calculateWordScore('DOG', { chainMultiplier: 2, isRare: false })
-
-    expect(total).toBe(expected)
+    // CAT at 1x = 5, DOG at 2x = 10
+    expect(total).toBe(15)
   })
 
   test('handles empty word list', () => {
@@ -191,6 +129,41 @@ describe('Total Score Calculation', () => {
 
   test('handles single word', () => {
     const total = calculateTotalScore(['CAT'], [1])
-    expect(total).toBe(calculateWordScore('CAT', { chainMultiplier: 1, isRare: false }))
+    expect(total).toBe(5)
+  })
+
+  test('chain bonus example: dog on 2nd chain worth 10', () => {
+    // As per requirements: if "dog" comes in second, it's worth 10 instead of 5
+    const dogChain2 = calculateWordScore('DOG', 2)
+    expect(dogChain2).toBe(10)
+  })
+
+  test('chain bonus example: dog on 3rd chain worth 15', () => {
+    // As per requirements: if it came in third, it'd be worth 15
+    const dogChain3 = calculateWordScore('DOG', 3)
+    expect(dogChain3).toBe(15)
+  })
+
+  test('words within words: POTS scores for all found words', () => {
+    // When POTS (P-O-T-S) is on the board, we find: POTS, STOP, POT, TOP
+    // Each scored separately at chain multiplier 1:
+    // POTS = P(3) + O(1) + T(1) + S(1) = 6
+    // STOP = S(1) + T(1) + O(1) + P(3) = 6 (reverse of POTS)
+    // POT  = P(3) + O(1) + T(1) = 5
+    // TOP  = T(1) + O(1) + P(3) = 5 (reverse of POT)
+    // Total = 22 points
+
+    const pots = calculateWordScore('POTS', 1)
+    const stop = calculateWordScore('STOP', 1)
+    const pot = calculateWordScore('POT', 1)
+    const top = calculateWordScore('TOP', 1)
+
+    expect(pots).toBe(6)
+    expect(stop).toBe(6)
+    expect(pot).toBe(5)
+    expect(top).toBe(5)
+
+    const total = pots + stop + pot + top
+    expect(total).toBe(22)
   })
 })

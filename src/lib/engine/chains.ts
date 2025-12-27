@@ -57,10 +57,7 @@ export function processChainReaction(state: GameState): ChainResult {
     })
 
     uniqueWords.forEach(word => {
-      const score = calculateWordScore(word.word, {
-        chainMultiplier: multiplier,
-        isRare: word.isRare,
-      })
+      const score = calculateWordScore(word.word, multiplier)
       totalScore += score
 
       if (!allWordsFound.includes(word.word)) {
