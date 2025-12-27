@@ -15,6 +15,7 @@ export interface ScoreEntry {
   wordsFound: number
   longestWord: string
   bestChain: number
+  bestStreak: number
   date: string // ISO string
   mode: GameMode
   wordHistory?: WordWithScore[] // All words found with their scores

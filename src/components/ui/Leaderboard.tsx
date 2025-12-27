@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { ArrowLeft, Trophy, Calendar, Medal, Zap, Type, ChevronDown, ChevronUp, Star, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar, Medal, Zap, Flame, Type, ChevronDown, ChevronUp, Star, Loader2 } from 'lucide-react'
 import { fetchGlobalLeaderboard, ScoreEntry } from '../../lib/scores'
 import { GameMode } from '../../lib/types'
 
@@ -247,10 +247,16 @@ function ScoreRow({
                 <Type size={12} />
                 {score.wordsFound} words
               </span>
+              {score.bestStreak > 1 && (
+                <span className="flex items-center gap-1 text-orange-400">
+                  <Flame size={12} />
+                  {score.bestStreak} streak
+                </span>
+              )}
               {score.bestChain > 1 && (
                 <span className="flex items-center gap-1 text-purple-400">
                   <Zap size={12} />
-                  {score.bestChain}x chain
+                  {score.bestChain}x combo
                 </span>
               )}
             </div>

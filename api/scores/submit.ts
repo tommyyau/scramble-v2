@@ -12,6 +12,7 @@ interface ScoreSubmission {
   wordsFound: number
   longestWord: string
   bestChain: number
+  bestStreak: number
   mode: 'classic' | 'zen' | 'sprint' | 'daily'
   wordHistory?: WordWithScore[]
 }
@@ -28,6 +29,7 @@ function isScorePlausible(submission: ScoreSubmission): boolean {
   if (submission.level < 1 || submission.level > 100) return false
   if (submission.wordsFound < 0 || submission.wordsFound > 1000) return false
   if (submission.bestChain < 0 || submission.bestChain > 50) return false
+  if (submission.bestStreak < 0 || submission.bestStreak > 1000) return false
 
   // Score should be roughly proportional to words found
   // Average word is ~15-30 points, allow generous range

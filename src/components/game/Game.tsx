@@ -217,6 +217,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
       wordsFound: stats.totalWordsFound,
       longestWord: stats.longestWord,
       bestChain: stats.bestChain,
+      bestStreak: stats.bestStreak,
       mode,
       wordHistory: stats.wordHistory,
     }
