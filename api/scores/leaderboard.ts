@@ -41,14 +41,23 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Parse and filter by timeframe
     // @vercel/kv may return already-parsed objects or strings
-    let scores: StoredScore[] = rawScores.map((item: unknown) => {
-      if (typeof item === 'string') {
-        return JSON.parse(item)
-      }
-      return item as StoredScore
-    })
+    // Use try-catch to handle corrupted data gracefully
+    const scores: StoredScore[] = rawScores
+      .map((item: unknown): StoredScore | null => {
+        try {
+          if (typeof item === 'string') {
+            return JSON.parse(item)
+          }
+          return item as StoredScore
+        } catch {
+          console.error('Failed to parse score entry:', item)
+          return null
+        }
+      })
+      .filter((s): s is StoredScore => s !== null)
 
     // Apply timeframe filter
+    let filteredScores = scores
     if (timeframe !== 'all') {
       const now = new Date()
       let cutoff: Date
@@ -61,11 +70,11 @@ export default async function handler(req: Request): Promise<Response> {
         cutoff = new Date(0) // All time
       }
 
-      scores = scores.filter(s => new Date(s.date) >= cutoff)
+      filteredScores = scores.filter(s => new Date(s.date) >= cutoff)
     }
 
     // Return scores with wordHistory for expandable word list
-    const leaderboard = scores.slice(0, limit).map(s => ({
+    const leaderboard = filteredScores.slice(0, limit).map(s => ({
       id: s.id,
       name: s.name,
       score: s.score,

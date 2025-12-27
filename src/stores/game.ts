@@ -202,7 +202,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
 
       // Spawn next block
-      const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter!)
+      if (!chainResult.state.nextLetter) {
+        console.error('nextLetter is null after chain reaction')
+        return
+      }
+      const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter)
       updates.blocks = nextState.blocks
       updates.nextLetter = nextState.nextLetter
 
@@ -219,7 +223,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return
       }
 
-      const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter!)
+      if (!chainResult.state.nextLetter) {
+        console.error('nextLetter is null, cannot spawn block')
+        return
+      }
+      const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter)
       set({
         blocks: nextState.blocks,
         nextLetter: nextState.nextLetter,
@@ -267,9 +275,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Actions
   startGame: (mode: GameMode) => {
     const initialState = createInitialState(mode)
-    console.log('Initial state bonus word:', initialState.currentBonusWord)
-    const stateWithBlock = spawnBlock(initialState, initialState.nextLetter!)
-    console.log('After spawn bonus word:', stateWithBlock.currentBonusWord)
+    if (!initialState.nextLetter) {
+      console.error('Initial state has no nextLetter')
+      return
+    }
+    const stateWithBlock = spawnBlock(initialState, initialState.nextLetter)
     set({ ...stateWithBlock })
   },
 
@@ -443,7 +453,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
 
         // Spawn next block
-        const nextState = spawnBlock(gravityResult.state, gravityResult.state.nextLetter!)
+        if (!gravityResult.state.nextLetter) {
+          console.error('nextLetter is null after gravity chain')
+          return
+        }
+        const nextState = spawnBlock(gravityResult.state, gravityResult.state.nextLetter)
         updates.blocks = nextState.blocks
         updates.nextLetter = nextState.nextLetter
 
@@ -460,7 +474,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
 
         // Spawn next block
-        const nextState = spawnBlock(withGravity, withGravity.nextLetter!)
+        if (!withGravity.nextLetter) {
+          console.error('nextLetter is null, cannot spawn block')
+          return
+        }
+        const nextState = spawnBlock(withGravity, withGravity.nextLetter)
 
         const updates: Partial<GameStore> = {
           blocks: nextState.blocks,

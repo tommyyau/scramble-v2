@@ -115,14 +115,15 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     return () => clearInterval(interval)
   }, [showModeSelect, gameOver, isPaused, mode, level, gameTick])
 
-  // Sprint timer
+  // Sprint timer - combined effect to avoid race condition
   useEffect(() => {
     if (mode !== 'sprint' || gameOver || isPaused || showModeSelect) return
 
     const interval = setInterval(() => {
       setSprintTimer(prev => {
         if (prev <= 1) {
-          // Time's up - trigger game over
+          // Time's up - trigger game over on next tick to avoid setState race
+          setTimeout(triggerGameOver, 0)
           return 0
         }
         return prev - 1
@@ -130,14 +131,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [mode, gameOver, isPaused, showModeSelect])
-
-  // Check sprint timer game over - actually trigger it now
-  useEffect(() => {
-    if (mode === 'sprint' && sprintTimer === 0 && !gameOver) {
-      triggerGameOver()
-    }
-  }, [mode, sprintTimer, gameOver, triggerGameOver])
+  }, [mode, gameOver, isPaused, showModeSelect, triggerGameOver])
 
   // Level timer - time-based progression for Classic, Sprint, Daily (not Zen)
   useEffect(() => {
