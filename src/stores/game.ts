@@ -175,44 +175,59 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const withGravity = applyGravity(clearedState)
 
     // Process any chain reactions (blocks falling may form new words)
+    // Use streakMultiplier: 1 because gravity chains don't continue player streaks
     const chainResult = processBlockLocked(withGravity, {
-      streakMultiplier: state.currentStreak,
+      streakMultiplier: 1,
     })
 
-    // Build updates if chain words were found
-    const updates: Partial<GameStore> = {
-      blocks: chainResult.state.blocks,
-      score: chainResult.state.score,
-      wordsFound: chainResult.state.wordsFound,
-      isCelebrating: false,
-    }
-
-    // Update stats with chain words
     if (chainResult.chainCount > 0) {
-      updates.stats = {
-        ...state.stats,
-        totalWordsFound: state.stats.totalWordsFound + chainResult.wordsFound.length,
-        bestChain: Math.max(state.stats.bestChain, chainResult.chainCount),
-        wordHistory: [...state.stats.wordHistory, ...chainResult.wordsWithScores],
+      // Chain words found! Play sounds and use helper for updates
+      playWordClear()
+      if (chainResult.chainCount > 1) {
+        playChain(chainResult.chainCount)
       }
-    }
 
-    // Check game over
-    if (isGameOver(chainResult.state)) {
-      playGameOver()
+      // Use helper for consistent handling (stats, particles, bonus words, shake)
+      const updates = buildWordResultUpdates(chainResult, state, 0)
+      updates.isCelebrating = false
+
+      // Check game over
+      if (isGameOver(chainResult.state)) {
+        playGameOver()
+        set({
+          ...updates,
+          gameOver: true,
+        })
+        return
+      }
+
+      // Spawn next block
+      const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter!)
+      updates.blocks = nextState.blocks
+      updates.nextLetter = nextState.nextLetter
+
+      set(updates)
+    } else {
+      // No chain words - just spawn next block
+      if (isGameOver(chainResult.state)) {
+        playGameOver()
+        set({
+          ...chainResult.state,
+          gameOver: true,
+          isCelebrating: false,
+        })
+        return
+      }
+
+      const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter!)
       set({
-        ...updates,
-        gameOver: true,
+        blocks: nextState.blocks,
+        nextLetter: nextState.nextLetter,
+        score: chainResult.state.score,
+        wordsFound: chainResult.state.wordsFound,
+        isCelebrating: false,
       })
-      return
     }
-
-    // Spawn next block
-    const nextState = spawnBlock(chainResult.state, chainResult.state.nextLetter!)
-    updates.blocks = nextState.blocks
-    updates.nextLetter = nextState.nextLetter
-
-    set(updates)
   },
 
   endShake: () => {
