@@ -29,6 +29,9 @@ interface FoundWordEvent {
 export interface WordWithScore {
   word: string
   score: number
+  streakMultiplier?: number  // 2x, 3x, etc for consecutive finds
+  chainMultiplier?: number   // 2x, 3x, etc for gravity chains
+  isBonus?: boolean          // Was this the bonus word
 }
 
 interface GameStats {
@@ -284,14 +287,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
       // Calculate individual word scores for history (including bonus if matched)
-      const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
-        word,
-        score: calculateWordScore(word, {
-          chainMultiplier: wordResult.chainCount,
-          streakMultiplier: newStreak,
-          bonusMultiplier: isBonusWordMatch(word, state.currentBonusWord) ? BONUS_WORD_MULTIPLIER : 1,
-        }),
-      }))
+      const newWordsWithScores: WordWithScore[] = newWords.map(word => {
+        const isBonus = isBonusWordMatch(word, state.currentBonusWord)
+        return {
+          word,
+          score: calculateWordScore(word, {
+            chainMultiplier: wordResult.chainCount,
+            streakMultiplier: newStreak,
+            bonusMultiplier: isBonus ? BONUS_WORD_MULTIPLIER : 1,
+          }),
+          streakMultiplier: newStreak > 1 ? newStreak : undefined,
+          chainMultiplier: wordResult.chainCount > 1 ? wordResult.chainCount : undefined,
+          isBonus: isBonus || undefined,
+        }
+      })
 
       updates.lastFoundWord = {
         word: newWords.join(', '),
@@ -419,14 +428,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
         // Calculate individual word scores for history (including bonus if matched)
-        const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
-          word,
-          score: calculateWordScore(word, {
-            chainMultiplier: wordResult.chainCount,
-            streakMultiplier: newStreak,
-            bonusMultiplier: isBonusWordMatch(word, state.currentBonusWord) ? BONUS_WORD_MULTIPLIER : 1,
-          }),
-        }))
+        const newWordsWithScores: WordWithScore[] = newWords.map(word => {
+          const isBonus = isBonusWordMatch(word, state.currentBonusWord)
+          return {
+            word,
+            score: calculateWordScore(word, {
+              chainMultiplier: wordResult.chainCount,
+              streakMultiplier: newStreak,
+              bonusMultiplier: isBonus ? BONUS_WORD_MULTIPLIER : 1,
+            }),
+            streakMultiplier: newStreak > 1 ? newStreak : undefined,
+            chainMultiplier: wordResult.chainCount > 1 ? wordResult.chainCount : undefined,
+            isBonus: isBonus || undefined,
+          }
+        })
 
         updates.lastFoundWord = {
           word: newWords.join(', '),

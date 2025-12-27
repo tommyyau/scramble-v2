@@ -295,23 +295,42 @@ function ScoreRow({
       {isExpanded && hasWordHistory && (
         <div className="px-4 pb-4 pt-0">
           <div className="ml-11 flex flex-wrap gap-2">
-            {score.wordHistory!.map((item, idx) => (
-              <div
-                key={`${item.word}-${idx}`}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                  highestScoringWord && item.word === highestScoringWord.word && item.score === highestScoringWord.score
-                    ? 'bg-accent/20 text-accent border border-accent/30'
-                    : 'bg-slate-700/50 text-slate-300'
-                }`}
-              >
-                <span className="font-mono">{item.word}</span>
-                <span className={`text-xs ${
-                  highestScoringWord && item.word === highestScoringWord.word && item.score === highestScoringWord.score
-                    ? 'text-accent'
-                    : 'text-secondary'
-                }`}>+{item.score}</span>
-              </div>
-            ))}
+            {score.wordHistory!.map((item, idx) => {
+              const isHighest = highestScoringWord && item.word === highestScoringWord.word && item.score === highestScoringWord.score
+              const hasMultipliers = item.streakMultiplier || item.chainMultiplier || item.isBonus
+              return (
+                <div
+                  key={`${item.word}-${idx}`}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                    isHighest
+                      ? 'bg-accent/20 text-accent border border-accent/30'
+                      : hasMultipliers
+                        ? 'bg-slate-600/50 text-white'
+                        : 'bg-slate-700/50 text-slate-300'
+                  }`}
+                >
+                  <span className="font-mono">{item.word}</span>
+                  {item.isBonus && (
+                    <Star size={10} className="text-yellow-400" />
+                  )}
+                  {item.streakMultiplier && (
+                    <span className="flex items-center text-orange-400">
+                      <Flame size={10} />
+                      <span className="text-[10px]">{item.streakMultiplier}×</span>
+                    </span>
+                  )}
+                  {item.chainMultiplier && (
+                    <span className="flex items-center text-purple-400">
+                      <Zap size={10} />
+                      <span className="text-[10px]">{item.chainMultiplier}×</span>
+                    </span>
+                  )}
+                  <span className={`text-xs ${isHighest ? 'text-accent' : 'text-secondary'}`}>
+                    +{item.score}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
