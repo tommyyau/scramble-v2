@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
-import { block, row, createTestState } from '../setup'
-import { processBlockLocked, BlockLockedResult } from '../../src/lib/engine/game-flow'
+import { block, createTestState } from '../setup'
+import { processBlockLocked } from '../../src/lib/engine/game-flow'
 import { applyGravity } from '../../src/lib/engine/grid'
 import { GRID_HEIGHT } from '../../src/lib/constants'
 
