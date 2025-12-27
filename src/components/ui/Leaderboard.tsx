@@ -217,6 +217,12 @@ function ScoreRow({
     , score.wordHistory[0])
   }, [score.wordHistory])
 
+  // Count bonus words
+  const bonusWordCount = useMemo(() => {
+    if (!score.wordHistory) return 0
+    return score.wordHistory.filter(w => w.isBonus).length
+  }, [score.wordHistory])
+
   const hasWordHistory = score.wordHistory && score.wordHistory.length > 0
 
   return (
@@ -257,6 +263,12 @@ function ScoreRow({
                 <span className="flex items-center gap-1 text-purple-400">
                   <Zap size={12} />
                   {score.bestChain}x combo
+                </span>
+              )}
+              {bonusWordCount > 0 && (
+                <span className="flex items-center gap-1 text-yellow-400">
+                  <Star size={12} />
+                  {bonusWordCount} bonus
                 </span>
               )}
             </div>
