@@ -175,9 +175,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const withGravity = applyGravity(clearedState)
 
     // Process any chain reactions (blocks falling may form new words)
-    // Use streakMultiplier: 1 because gravity chains don't continue player streaks
+    // Chain words get the current streak bonus - they're part of the same successful play
     const chainResult = processBlockLocked(withGravity, {
-      streakMultiplier: 1,
+      streakMultiplier: state.currentStreak,
     })
 
     if (chainResult.chainCount > 0) {
