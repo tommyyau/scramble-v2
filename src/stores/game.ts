@@ -353,33 +353,124 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       set(updates)
     } else {
-      // No words found - proceed immediately (no celebration)
-      // Check game over
-      if (isGameOver(droppedState)) {
-        playGameOver()
-        set({
-          ...droppedState,
-          gameOver: true,
-        })
-        return
+      // No words found immediately - apply gravity and check for gravity-formed words
+      let newState = applyGravity(droppedState)
+
+      // Check if gravity caused blocks to form words
+      const gravityResult = processChainReaction(newState, { streakMultiplier: 1 })
+
+      if (gravityResult.chainCount > 0) {
+        // Words formed by gravity! Handle celebration
+        const gravityWords = gravityResult.wordsFound.filter(
+          w => !state.wordsFound.includes(w)
+        )
+        const scoreGained = gravityResult.score - state.score
+
+        playWordClear()
+        if (gravityResult.chainCount > 1) {
+          playChain(gravityResult.chainCount)
+        }
+
+        // Handle bonus word match
+        const updates: Partial<GameStore> = {
+          blocks: gravityResult.blocks,
+          score: gravityResult.score,
+          wordsFound: gravityResult.wordsFound,
+          currentStreak: 0, // Gravity words don't continue streaks
+          streakBroken: state.currentStreak > 0,
+        }
+
+        if (gravityResult.bonusWordMatched && state.currentBonusWord) {
+          updates.bonusWordsFound = [...state.bonusWordsFound, state.currentBonusWord]
+          updates.currentBonusWord = getRandomBonusWord()
+          updates.bonusWordMatched = true
+        }
+
+        // Update stats
+        const currentStats = state.stats
+        const longestNew = gravityWords.length > 0
+          ? gravityWords.reduce((a, b) => a.length > b.length ? a : b, '')
+          : ''
+        const newLongest = longestNew.length > currentStats.longestWord.length ? longestNew : currentStats.longestWord
+        const newBestChain = Math.max(currentStats.bestChain, gravityResult.chainCount)
+
+        // Add gravity words to history with chain multipliers
+        const gravityWordsWithScores: WordWithScore[] = gravityResult.chainWordsWithScores.map(w => ({
+          word: w.word,
+          score: w.score,
+          chainMultiplier: w.chainMultiplier > 1 ? w.chainMultiplier : undefined,
+          isBonus: w.isBonus || undefined,
+        }))
+
+        updates.lastFoundWord = {
+          word: gravityWords.join(', '),
+          score: scoreGained,
+          id: ++wordEventId,
+          chainCount: gravityResult.chainCount,
+          streakCount: 0,
+          bonusWordMatched: gravityResult.bonusWordMatched,
+        }
+        updates.stats = {
+          longestWord: newLongest,
+          bestChain: newBestChain,
+          totalWordsFound: currentStats.totalWordsFound + gravityWords.length,
+          bestStreak: currentStats.bestStreak,
+          wordHistory: [...currentStats.wordHistory, ...gravityWordsWithScores],
+        }
+
+        // Trigger particles and shake
+        if (gravityResult.clearedPositions.length > 0) {
+          updates.particleEvent = {
+            id: wordEventId,
+            positions: gravityResult.clearedPositions,
+          }
+        }
+        updates.isShaking = true
+
+        // Check game over after gravity chain
+        if (isGameOver(gravityResult)) {
+          playGameOver()
+          set({
+            ...updates,
+            gameOver: true,
+          })
+          return
+        }
+
+        // Spawn next block
+        const nextState = spawnBlock(gravityResult, gravityResult.nextLetter!)
+        updates.blocks = nextState.blocks
+        updates.nextLetter = nextState.nextLetter
+
+        set(updates)
+      } else {
+        // Truly no words - check game over and spawn next block
+        if (isGameOver(newState)) {
+          playGameOver()
+          set({
+            ...newState,
+            gameOver: true,
+          })
+          return
+        }
+
+        // Spawn next block
+        const nextState = spawnBlock(newState, newState.nextLetter!)
+
+        const updates: Partial<GameStore> = {
+          blocks: nextState.blocks,
+          nextLetter: nextState.nextLetter,
+        }
+
+        // Break streak if we had one
+        if (state.currentStreak > 0) {
+          playStreakBroken()
+          updates.currentStreak = 0
+          updates.streakBroken = true
+        }
+
+        set(updates)
       }
-
-      // Spawn next block immediately
-      const nextState = spawnBlock(droppedState, droppedState.nextLetter!)
-
-      const updates: Partial<GameStore> = {
-        blocks: nextState.blocks,
-        nextLetter: nextState.nextLetter,
-      }
-
-      // Break streak if we had one
-      if (state.currentStreak > 0) {
-        playStreakBroken()
-        updates.currentStreak = 0
-        updates.streakBroken = true
-      }
-
-      set(updates)
     }
   },
 
@@ -494,36 +585,124 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         set(updates)
       } else {
-        // No words found - proceed immediately (no celebration)
-        // Apply gravity
+        // No words found immediately - apply gravity and check for gravity-formed words
         newState = applyGravity(newState)
 
-        // Check game over
-        if (isGameOver(newState)) {
-          playGameOver()
-          set({
-            ...newState,
-            gameOver: true,
-          })
-          return
+        // Check if gravity caused blocks to form words
+        const gravityResult = processChainReaction(newState, { streakMultiplier: 1 })
+
+        if (gravityResult.chainCount > 0) {
+          // Words formed by gravity! Handle celebration
+          const gravityWords = gravityResult.wordsFound.filter(
+            w => !state.wordsFound.includes(w)
+          )
+          const scoreGained = gravityResult.score - state.score
+
+          playWordClear()
+          if (gravityResult.chainCount > 1) {
+            playChain(gravityResult.chainCount)
+          }
+
+          // Handle bonus word match
+          const updates: Partial<GameStore> = {
+            blocks: gravityResult.blocks,
+            score: gravityResult.score,
+            wordsFound: gravityResult.wordsFound,
+            currentStreak: 0, // Gravity words don't continue streaks
+            streakBroken: state.currentStreak > 0,
+          }
+
+          if (gravityResult.bonusWordMatched && state.currentBonusWord) {
+            updates.bonusWordsFound = [...state.bonusWordsFound, state.currentBonusWord]
+            updates.currentBonusWord = getRandomBonusWord()
+            updates.bonusWordMatched = true
+          }
+
+          // Update stats
+          const currentStats = state.stats
+          const longestNew = gravityWords.length > 0
+            ? gravityWords.reduce((a, b) => a.length > b.length ? a : b, '')
+            : ''
+          const newLongest = longestNew.length > currentStats.longestWord.length ? longestNew : currentStats.longestWord
+          const newBestChain = Math.max(currentStats.bestChain, gravityResult.chainCount)
+
+          // Add gravity words to history with chain multipliers
+          const gravityWordsWithScores: WordWithScore[] = gravityResult.chainWordsWithScores.map(w => ({
+            word: w.word,
+            score: w.score,
+            chainMultiplier: w.chainMultiplier > 1 ? w.chainMultiplier : undefined,
+            isBonus: w.isBonus || undefined,
+          }))
+
+          updates.lastFoundWord = {
+            word: gravityWords.join(', '),
+            score: scoreGained,
+            id: ++wordEventId,
+            chainCount: gravityResult.chainCount,
+            streakCount: 0,
+            bonusWordMatched: gravityResult.bonusWordMatched,
+          }
+          updates.stats = {
+            longestWord: newLongest,
+            bestChain: newBestChain,
+            totalWordsFound: currentStats.totalWordsFound + gravityWords.length,
+            bestStreak: currentStats.bestStreak,
+            wordHistory: [...currentStats.wordHistory, ...gravityWordsWithScores],
+          }
+
+          // Trigger particles and shake
+          if (gravityResult.clearedPositions.length > 0) {
+            updates.particleEvent = {
+              id: wordEventId,
+              positions: gravityResult.clearedPositions,
+            }
+          }
+          updates.isShaking = true
+
+          // Check game over after gravity chain
+          if (isGameOver(gravityResult)) {
+            playGameOver()
+            set({
+              ...updates,
+              gameOver: true,
+            })
+            return
+          }
+
+          // Spawn next block
+          const nextState = spawnBlock(gravityResult, gravityResult.nextLetter!)
+          updates.blocks = nextState.blocks
+          updates.nextLetter = nextState.nextLetter
+
+          set(updates)
+        } else {
+          // Truly no words - check game over and spawn next block
+          if (isGameOver(newState)) {
+            playGameOver()
+            set({
+              ...newState,
+              gameOver: true,
+            })
+            return
+          }
+
+          // Spawn next block
+          const nextState = spawnBlock(newState, newState.nextLetter!)
+
+          const updates: Partial<GameStore> = {
+            blocks: nextState.blocks,
+            nextLetter: nextState.nextLetter,
+          }
+
+          // Break streak if we had one
+          if (state.currentStreak > 0) {
+            playStreakBroken()
+            updates.currentStreak = 0
+            updates.streakBroken = true
+          }
+
+          set(updates)
         }
-
-        // Spawn next block
-        const nextState = spawnBlock(newState, newState.nextLetter!)
-
-        const updates: Partial<GameStore> = {
-          blocks: nextState.blocks,
-          nextLetter: nextState.nextLetter,
-        }
-
-        // Break streak if we had one
-        if (state.currentStreak > 0) {
-          playStreakBroken()
-          updates.currentStreak = 0
-          updates.streakBroken = true
-        }
-
-        set(updates)
       }
     } else {
       set({ blocks: newState.blocks })

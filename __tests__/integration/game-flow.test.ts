@@ -3,6 +3,7 @@ import { block, createTestState } from '../setup'
 import { createInitialState, spawnBlock, tick } from '../../src/lib/engine/core'
 import { moveBlock, hardDrop, applyGravity } from '../../src/lib/engine/grid'
 import { checkAndClearWords, findWords } from '../../src/lib/engine/words'
+import { processChainReaction } from '../../src/lib/engine/chains'
 import { GRID_HEIGHT, SPAWN_POSITION } from '../../src/lib/constants'
 
 describe('Complete Word Formation Flow', () => {
@@ -191,6 +192,84 @@ describe('Block Landing', () => {
     const blockA = state.blocks.find(b => b.letter === 'A')
     expect(blockA?.y).toBe(GRID_HEIGHT - 2)
     expect(blockA?.locked).toBe(true)
+  })
+})
+
+describe('Gravity Word Detection', () => {
+  test('words formed by gravity should be detected immediately', () => {
+    // Bug scenario: Block locks, no words found, gravity applied,
+    // blocks fall into word positions but word NOT detected until next block
+    //
+    // Setup:
+    // - "OI" floating at row 3 with empty space below
+    // - "L" at row 7 (bottom)
+    // - New block locks at row 6 (to the right, not forming a word)
+    // - Gravity makes "OI" fall to rows 5-6
+    // - "OIL" forms vertically but bug: not detected!
+    //
+    // Grid visualization:
+    //   Col: 0 1 2 3 4 5 6 7
+    //   Row 3: O
+    //   Row 4: I
+    //   Row 5:
+    //   Row 6:         X     <- New block locks here
+    //   Row 7: L             <- Bottom
+    //
+    // After gravity on OI (assuming X locks and OI falls):
+    //   Row 5: O
+    //   Row 6: I   X
+    //   Row 7: L             <- OIL forms vertically!
+
+    let state = createTestState({
+      blocks: [
+        block(0, 3, 'O', true),  // Will fall
+        block(0, 4, 'I', true),  // Will fall
+        block(0, 7, 'L', true),  // At bottom
+        block(4, 7, 'X', true),  // Some other block at bottom
+      ],
+    })
+
+    // Simulate what happens in gameTick when no words found:
+    // Apply gravity - O and I should fall
+    state = applyGravity(state)
+
+    // After gravity: O is at row 5, I is at row 6, L at row 7 = "OIL" vertically
+    const blockO = state.blocks.find(b => b.letter === 'O')
+    const blockI = state.blocks.find(b => b.letter === 'I')
+    const blockL = state.blocks.find(b => b.letter === 'L')
+
+    expect(blockO?.y).toBe(5)  // O fell to row 5
+    expect(blockI?.y).toBe(6)  // I fell to row 6
+    expect(blockL?.y).toBe(7)  // L stayed at row 7
+
+    // Now check if words are found - this is what SHOULD happen
+    // but the bug is that gameTick() doesn't do this check
+    const words = findWords(state.blocks)
+    const wordTexts = words.map(w => w.word)
+
+    // OIL should be detected!
+    expect(wordTexts).toContain('OIL')
+  })
+
+  test('processChainReaction handles gravity-formed words correctly', () => {
+    // This tests that the engine function works - it's the game store that has the bug
+    let state = createTestState({
+      blocks: [
+        block(0, 3, 'O', true),  // Will fall
+        block(0, 4, 'I', true),  // Will fall
+        block(0, 7, 'L', true),  // At bottom
+      ],
+    })
+
+    // Apply gravity first
+    state = applyGravity(state)
+
+    // Process chain reaction - should find OIL
+    const result = processChainReaction(state)
+
+    expect(result.chainCount).toBeGreaterThan(0)
+    expect(result.wordsFound).toContain('OIL')
+    expect(result.score).toBeGreaterThan(0)
   })
 })
 
