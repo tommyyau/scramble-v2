@@ -31,8 +31,12 @@ export default async function handler(req: Request): Promise<Response> {
     // Determine which key to query
     const key = mode ? `scores:${mode}` : 'scores:all'
 
+    // When filtering by timeframe, fetch more scores since we filter after retrieval
+    // For 'all' timeframe, we only need `limit` scores
+    const fetchLimit = timeframe === 'all' ? limit : 1000
+
     // Get top scores (sorted set returns highest scores first with ZREVRANGE)
-    const rawScores = await kv.zrange(key, 0, limit - 1, { rev: true })
+    const rawScores = await kv.zrange(key, 0, fetchLimit - 1, { rev: true })
 
     // Parse and filter by timeframe
     // @vercel/kv may return already-parsed objects or strings
