@@ -25,8 +25,9 @@ function getDailySeed(): number {
  * Create the initial game state
  */
 export function createInitialState(mode: GameMode): GameState {
-  // Reset letter buffer to start fresh each game
+  // Reset counters to start fresh each game
   resetLetterBuffer()
+  resetBlockIdCounter()
 
   // Reset daily letter index for daily mode to ensure consistent sequence
   if (mode === 'daily') {
