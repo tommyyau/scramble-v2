@@ -46,11 +46,20 @@ export interface ClearedPosition {
   color: string
 }
 
+export interface ChainWordInfo {
+  word: string
+  score: number
+  chainMultiplier: number
+  streakMultiplier: number
+  isBonus: boolean
+}
+
 export interface ChainResult extends GameState {
   chainCount: number
   chainMultipliers: number[]
   clearedPositions: ClearedPosition[]
   bonusWordMatched: boolean
+  chainWordsWithScores: ChainWordInfo[]  // Words found during chain with their multipliers
 }
 
 export type GameMode = 'classic' | 'zen' | 'sprint' | 'daily'

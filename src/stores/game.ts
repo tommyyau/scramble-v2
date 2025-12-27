@@ -127,6 +127,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Apply gravity after chains
     newState = applyGravity(chainResult)
 
+    // Add chain words to history with their multipliers
+    const chainWordsForHistory: WordWithScore[] = chainResult.chainWordsWithScores.map(w => ({
+      word: w.word,
+      score: w.score,
+      streakMultiplier: w.streakMultiplier > 1 ? w.streakMultiplier : undefined,
+      chainMultiplier: w.chainMultiplier > 1 ? w.chainMultiplier : undefined,
+      isBonus: w.isBonus || undefined,
+    }))
+
+    // Update stats with chain words
+    const updatedStats = chainWordsForHistory.length > 0
+      ? {
+          ...state.stats,
+          totalWordsFound: state.stats.totalWordsFound + chainWordsForHistory.length,
+          bestChain: Math.max(state.stats.bestChain, chainResult.chainCount),
+          wordHistory: [...state.stats.wordHistory, ...chainWordsForHistory],
+        }
+      : state.stats
+
     // Check game over
     if (isGameOver(newState)) {
       playGameOver()
@@ -134,6 +153,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...newState,
         gameOver: true,
         isCelebrating: false,
+        stats: updatedStats,
       })
       return
     }
@@ -147,6 +167,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       score: chainResult.score,
       wordsFound: chainResult.wordsFound,
       isCelebrating: false,
+      stats: updatedStats,
     })
   },
 

@@ -1,4 +1,4 @@
-import { GameState, ChainResult, ClearedPosition } from '../types'
+import { GameState, ChainResult, ClearedPosition, ChainWordInfo } from '../types'
 import { applyGravity } from './grid'
 import { findWords, clearWords } from './words'
 import { calculateWordScore } from './scoring'
@@ -154,6 +154,7 @@ export function processChainReaction(state: GameState, options: ChainReactionOpt
   const allWordsFound: string[] = []
   const chainMultipliers: number[] = []
   const allClearedPositions: ClearedPosition[] = []
+  const chainWordsWithScores: ChainWordInfo[] = []
   let totalScore = 0
   let bonusWordMatched = false
 
@@ -195,6 +196,15 @@ export function processChainReaction(state: GameState, options: ChainReactionOpt
         allWordsFound.push(word.word)
       }
 
+      // Track word info for history
+      chainWordsWithScores.push({
+        word: word.word,
+        score,
+        chainMultiplier,
+        streakMultiplier,
+        isBonus: isBonusMatch,
+      })
+
       // Track cleared positions for particles
       word.blocks.forEach(block => {
         allClearedPositions.push({
@@ -225,5 +235,6 @@ export function processChainReaction(state: GameState, options: ChainReactionOpt
     chainMultipliers,
     clearedPositions: allClearedPositions,
     bonusWordMatched,
+    chainWordsWithScores,
   }
 }
