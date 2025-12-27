@@ -24,7 +24,7 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
       try {
         const mode = modeFilter === 'all' ? undefined : modeFilter
         const timeframe = activeTab === 'today' ? 'today' : 'all'
-        const scores = await fetchGlobalLeaderboard({ mode, limit: 50, timeframe })
+        const scores = await fetchGlobalLeaderboard({ mode, limit: 10, timeframe })
         setGlobalScores(scores)
       } catch (error) {
         console.error('Failed to fetch cloud scores:', error)
