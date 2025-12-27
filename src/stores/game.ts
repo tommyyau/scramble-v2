@@ -4,7 +4,7 @@ import { createInitialState, spawnBlock, tick, isGameOver } from '../lib/engine/
 import { moveBlock, hardDrop, applyGravity } from '../lib/engine/grid'
 import { detectAndMarkWords, clearCelebratingBlocks, processChainReaction } from '../lib/engine/chains'
 import { calculateWordScore } from '../lib/engine/scoring'
-import { getRandomBonusWord } from '../lib/engine/bonus-word'
+import { getRandomBonusWord, isBonusWordMatch, BONUS_WORD_MULTIPLIER } from '../lib/engine/bonus-word'
 import {
   playWordClear,
   playChain,
@@ -283,12 +283,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
       const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
-      // Calculate individual word scores for history
+      // Calculate individual word scores for history (including bonus if matched)
       const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
         word,
         score: calculateWordScore(word, {
           chainMultiplier: wordResult.chainCount,
           streakMultiplier: newStreak,
+          bonusMultiplier: isBonusWordMatch(word, state.currentBonusWord) ? BONUS_WORD_MULTIPLIER : 1,
         }),
       }))
 
@@ -417,12 +418,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
         const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
-        // Calculate individual word scores for history (with streak multiplier)
+        // Calculate individual word scores for history (including bonus if matched)
         const newWordsWithScores: WordWithScore[] = newWords.map(word => ({
           word,
           score: calculateWordScore(word, {
             chainMultiplier: wordResult.chainCount,
             streakMultiplier: newStreak,
+            bonusMultiplier: isBonusWordMatch(word, state.currentBonusWord) ? BONUS_WORD_MULTIPLIER : 1,
           }),
         }))
 
