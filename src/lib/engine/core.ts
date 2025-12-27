@@ -1,6 +1,6 @@
 import { Block, GameState, GameMode } from '../types'
 import { SPAWN_POSITION, LETTER_COLORS, GRID_HEIGHT, MODE_CONFIGS } from '../constants'
-import { generateLetter, resetDailyLetterIndex } from './smart-letters'
+import { generateLetter, resetDailyLetterIndex, resetLetterBuffer } from './smart-letters'
 import { getRandomBonusWord, getSeededBonusWord } from './bonus-word'
 
 // Global block ID counter
@@ -25,6 +25,9 @@ function getDailySeed(): number {
  * Create the initial game state
  */
 export function createInitialState(mode: GameMode): GameState {
+  // Reset letter buffer to start fresh each game
+  resetLetterBuffer()
+
   // Reset daily letter index for daily mode to ensure consistent sequence
   if (mode === 'daily') {
     resetDailyLetterIndex()

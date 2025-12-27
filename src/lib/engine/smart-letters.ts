@@ -1,9 +1,16 @@
 import { Block, GameMode } from '../types'
-import { SCRABBLE_WEIGHTS, GRID_WIDTH, GRID_HEIGHT, MIN_WORD_LENGTH } from '../constants'
-import { isValidWord } from '../dictionary/words'
+import { SCRABBLE_WEIGHTS } from '../constants'
 
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-const VOWELS = ['A', 'E', 'I', 'O', 'U']
+// ============ LETTER BUFFER STATE ============
+
+let letterBuffer: string[] = []
+
+/**
+ * Reset letter buffer - call when starting a new game
+ */
+export function resetLetterBuffer(): void {
+  letterBuffer = []
+}
 
 // ============ SEEDED RANDOM FOR DAILY MODE ============
 
@@ -43,33 +50,109 @@ export function resetDailyLetterIndex(): void {
 }
 
 /**
- * Get a seeded random letter for daily mode
- * Uses date + letter index to ensure deterministic sequence
+ * Create a seeded RNG for daily mode
+ * Each call advances the index to ensure unique values
  */
-function getSeededWeightedLetter(): string {
+function createDailyRng(): () => number {
   const seed = getDailySeed() * 1000 + dailyLetterIndex++
-  const random = mulberry32(seed)
+  return mulberry32(seed)
+}
 
-  const totalWeight = Object.values(SCRABBLE_WEIGHTS).reduce((a, b) => a + b, 0)
-  let roll = random() * totalWeight
+// ============ BATCH LETTER GENERATION ============
 
-  for (const letter of ALPHABET) {
-    roll -= SCRABBLE_WEIGHTS[letter]
-    if (roll <= 0) {
-      return letter
+const VOWELS = ['A', 'E', 'I', 'O', 'U'] as const
+const CONSONANTS = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Y', 'Z'] as const
+
+/**
+ * Build a pile of letters based on Scrabble counts
+ * Each letter appears as many times as its Scrabble tile count
+ */
+function buildPile(letters: readonly string[]): string[] {
+  const pile: string[] = []
+  for (const letter of letters) {
+    const count = SCRABBLE_WEIGHTS[letter] || 1
+    for (let i = 0; i < count; i++) {
+      pile.push(letter)
     }
   }
-
-  return 'E' // Fallback
+  return pile
 }
 
 /**
- * Get a random letter weighted by Scrabble distribution
+ * Draw N random letters from a pile without replacement
  */
+function drawFromPile(pile: string[], count: number, rng: () => number): string[] {
+  const drawn: string[] = []
+  for (let i = 0; i < count && pile.length > 0; i++) {
+    const index = Math.floor(rng() * pile.length)
+    drawn.push(pile[index])
+    pile.splice(index, 1) // Remove from pile (no replacement within batch)
+  }
+  return drawn
+}
+
+/**
+ * Fisher-Yates shuffle
+ */
+function shuffle(array: string[], rng: () => number): void {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[array[i], array[j]] = [array[j], array[i]]
+  }
+}
+
+/**
+ * Refill the letter buffer with a new batch of 2-5 letters
+ * Always includes at least 1 vowel and 1 consonant
+ */
+function refillBuffer(rng: () => number): void {
+  // Build fresh piles for this batch
+  const vowelPile = buildPile(VOWELS)
+  const consonantPile = buildPile(CONSONANTS)
+
+  // Draw 1-2 vowels: max(1, floor(rng * 3)) yields 1 or 2
+  const vowelCount = Math.max(1, Math.floor(rng() * 3))
+  const drawnVowels = drawFromPile(vowelPile, vowelCount, rng)
+
+  // Draw 1-3 consonants: max(1, floor(rng * 4)) yields 1, 2, or 3
+  const consonantCount = Math.max(1, Math.floor(rng() * 4))
+  const drawnConsonants = drawFromPile(consonantPile, consonantCount, rng)
+
+  // Combine and shuffle
+  const batch = [...drawnVowels, ...drawnConsonants]
+  shuffle(batch, rng)
+
+  letterBuffer = batch
+}
+
+/**
+ * Generate a letter for the game using batch-based approach
+ *
+ * Maintains a buffer of 2-5 letters (1-2 vowels + 1-3 consonants)
+ * When buffer empties, refill from Scrabble-weighted piles
+ *
+ * For DAILY MODE: Uses seeded random so everyone gets the same letters
+ * For OTHER MODES: Uses Math.random
+ */
+export function generateLetter(_blocks: Block[], mode?: GameMode): string {
+  // Create appropriate RNG based on mode
+  // Note: For daily mode, we create a new RNG per call to maintain determinism
+  // since the seed incorporates dailyLetterIndex which increments
+  const rng = mode === 'daily' ? createDailyRng() : () => Math.random()
+
+  if (letterBuffer.length === 0) {
+    refillBuffer(rng)
+  }
+
+  return letterBuffer.shift()!
+}
+
+// Legacy export for compatibility (no longer used but kept for any external refs)
 export function getRandomWeightedLetter(): string {
   const totalWeight = Object.values(SCRABBLE_WEIGHTS).reduce((a, b) => a + b, 0)
   let random = Math.random() * totalWeight
 
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
   for (const letter of ALPHABET) {
     random -= SCRABBLE_WEIGHTS[letter]
     if (random <= 0) {
@@ -77,168 +160,5 @@ export function getRandomWeightedLetter(): string {
     }
   }
 
-  return 'E' // Fallback to most common letter
-}
-
-/**
- * Count how many possible words can be formed with current grid
- * This is a simplified heuristic - checks common patterns
- */
-export function countPossibleWords(blocks: Block[]): number {
-  const lockedBlocks = blocks.filter(b => b.locked)
-  if (lockedBlocks.length < 2) return 0
-
-  let count = 0
-
-  // Check each row for potential words
-  for (let y = 0; y < GRID_HEIGHT; y++) {
-    const rowBlocks = lockedBlocks.filter(b => b.y === y).sort((a, b) => a.x - b.x)
-    if (rowBlocks.length < 2) continue
-
-    // Look for adjacent pairs/triples that could form words
-    for (let i = 0; i < rowBlocks.length - 1; i++) {
-      if (rowBlocks[i + 1].x === rowBlocks[i].x + 1) {
-        // Found adjacent pair, check if any letter could complete a word
-        const pair = rowBlocks[i].letter + rowBlocks[i + 1].letter
-        for (const letter of ALPHABET) {
-          // Check if adding letter before, after, or in between forms word
-          if (isValidWord(letter + pair) || isValidWord(pair + letter)) {
-            count++
-            break
-          }
-        }
-      }
-    }
-  }
-
-  // Check each column for potential words
-  for (let x = 0; x < GRID_WIDTH; x++) {
-    const colBlocks = lockedBlocks.filter(b => b.x === x).sort((a, b) => a.y - b.y)
-    if (colBlocks.length < 2) continue
-
-    for (let i = 0; i < colBlocks.length - 1; i++) {
-      if (colBlocks[i + 1].y === colBlocks[i].y + 1) {
-        const pair = colBlocks[i].letter + colBlocks[i + 1].letter
-        for (const letter of ALPHABET) {
-          if (isValidWord(letter + pair) || isValidWord(pair + letter)) {
-            count++
-            break
-          }
-        }
-      }
-    }
-  }
-
-  return count
-}
-
-/**
- * Find letters that would enable at least one word
- */
-export function findHelpfulLetters(blocks: Block[]): string[] {
-  const lockedBlocks = blocks.filter(b => b.locked)
-  const helpful: Set<string> = new Set()
-
-  // For each position adjacent to existing blocks, check what letters would form words
-  for (const block of lockedBlocks) {
-    const adjacentPositions = [
-      { x: block.x - 1, y: block.y },
-      { x: block.x + 1, y: block.y },
-      { x: block.x, y: block.y - 1 },
-      { x: block.x, y: block.y + 1 },
-    ]
-
-    for (const pos of adjacentPositions) {
-      if (pos.x < 0 || pos.x >= GRID_WIDTH || pos.y < 0 || pos.y >= GRID_HEIGHT) continue
-      if (lockedBlocks.some(b => b.x === pos.x && b.y === pos.y)) continue
-
-      // Check what letters at this position would form words
-      for (const letter of ALPHABET) {
-        const testBlocks = [
-          ...lockedBlocks,
-          { x: pos.x, y: pos.y, letter, locked: true, color: '' },
-        ]
-
-        // Simple check: look for 3-letter sequences including this position
-        const rowBlocks = testBlocks.filter(b => b.y === pos.y).sort((a, b) => a.x - b.x)
-        const colBlocks = testBlocks.filter(b => b.x === pos.x).sort((a, b) => a.y - b.y)
-
-        // Check horizontal sequences
-        for (let start = 0; start <= rowBlocks.length - MIN_WORD_LENGTH; start++) {
-          for (let end = start + MIN_WORD_LENGTH; end <= rowBlocks.length; end++) {
-            const segment = rowBlocks.slice(start, end)
-            // Only check if our new letter is in this segment
-            if (segment.some(b => b.x === pos.x && b.y === pos.y)) {
-              const word = segment.map(b => b.letter).join('')
-              if (isValidWord(word)) {
-                helpful.add(letter)
-              }
-            }
-          }
-        }
-
-        // Check vertical sequences
-        for (let start = 0; start <= colBlocks.length - MIN_WORD_LENGTH; start++) {
-          for (let end = start + MIN_WORD_LENGTH; end <= colBlocks.length; end++) {
-            const segment = colBlocks.slice(start, end)
-            if (segment.some(b => b.x === pos.x && b.y === pos.y)) {
-              const word = segment.map(b => b.letter).join('')
-              if (isValidWord(word)) {
-                helpful.add(letter)
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return Array.from(helpful)
-}
-
-/**
- * Generate a letter for the game
- *
- * For DAILY MODE: Uses seeded random so everyone gets the same letters
- * - No smart letter logic - pure deterministic sequence
- * - Same date = same letter sequence for all players
- *
- * For OTHER MODES: Smart letter generation
- * - 90%+ of the time: Pure random with Scrabble weighting
- * - Only when grid is desperate (< 2 possible words): 30% chance to bias toward helpful letters
- * - Player still needs skill to position blocks and find words
- */
-export function generateLetter(blocks: Block[], mode?: GameMode): string {
-  // DAILY MODE: Seeded random for consistent letters across all players
-  if (mode === 'daily') {
-    return getSeededWeightedLetter()
-  }
-
-  // Other modes use smart letter generation
-  const possibleWordCount = countPossibleWords(blocks)
-
-  // NORMAL MODE (most of the time): Pure random, Scrabble-weighted
-  // This maintains difficulty - you get what you get
-  if (possibleWordCount >= 2) {
-    return getRandomWeightedLetter()
-  }
-
-  // RESCUE MODE (only when grid is desperate):
-  // 70% chance: Still random (maintain challenge)
-  // 30% chance: Bias toward letters that enable words
-  if (Math.random() > 0.3) {
-    return getRandomWeightedLetter()
-  }
-
-  // Find letters that would enable at least one word
-  const helpfulLetters = findHelpfulLetters(blocks)
-
-  // If found helpful letters, pick randomly from them
-  // Still random within the helpful set - not deterministic!
-  if (helpfulLetters.length > 0) {
-    return helpfulLetters[Math.floor(Math.random() * helpfulLetters.length)]
-  }
-
-  // Fallback: Random vowel (generally helpful)
-  return VOWELS[Math.floor(Math.random() * VOWELS.length)]
+  return 'E'
 }
