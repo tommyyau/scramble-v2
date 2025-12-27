@@ -1,9 +1,5 @@
 import { kv } from '@vercel/kv'
-
-interface WordWithScore {
-  word: string
-  score: number
-}
+import type { WordWithScore } from '../../src/lib/types'
 
 interface ScoreSubmission {
   name: string

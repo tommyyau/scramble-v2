@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { GameState, GameMode, ClearedPosition } from '../lib/types'
+import { GameState, GameMode, ClearedPosition, WordWithScore } from '../lib/types'
 import { createInitialState, spawnBlock, tick, isGameOver } from '../lib/engine/core'
 import { moveBlock, hardDrop, applyGravity } from '../lib/engine/grid'
 import { detectAndMarkWords, clearCelebratingBlocks, processChainReaction } from '../lib/engine/chains'
@@ -24,14 +24,6 @@ interface FoundWordEvent {
   chainCount: number
   streakCount: number
   bonusWordMatched: boolean
-}
-
-export interface WordWithScore {
-  word: string
-  score: number
-  streakMultiplier?: number  // 2x, 3x, etc for consecutive finds
-  chainMultiplier?: number   // 2x, 3x, etc for gravity chains
-  isBonus?: boolean          // Was this the bonus word
 }
 
 interface GameStats {

@@ -1,14 +1,9 @@
 // Local storage and cloud-based score management
 
-import { GameMode } from './types'
+import { GameMode, WordWithScore } from './types'
 
-export interface WordWithScore {
-  word: string
-  score: number
-  streakMultiplier?: number  // 2x, 3x, etc for consecutive finds
-  chainMultiplier?: number   // 2x, 3x, etc for gravity chains
-  isBonus?: boolean          // Was this the bonus word
-}
+// Re-export for consumers that import from scores.ts
+export type { WordWithScore }
 
 export interface ScoreEntry {
   id: string

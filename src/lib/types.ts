@@ -24,6 +24,14 @@ export interface WordMatch {
   score: number
 }
 
+export interface WordWithScore {
+  word: string
+  score: number
+  streakMultiplier?: number  // 2x, 3x, etc for consecutive finds
+  chainMultiplier?: number   // 2x, 3x, etc for gravity chains
+  isBonus?: boolean          // Was this the bonus word
+}
+
 export interface GameState {
   blocks: Block[]
   nextLetter: string | null
