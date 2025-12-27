@@ -376,36 +376,6 @@ describe('Long Words', () => {
     expect(wordTexts).toContain('BRIDGE')
   })
 
-  test('finds 7-letter words', () => {
-    const blocks = [
-      block(0, 7, 'C', true),
-      block(1, 7, 'O', true),
-      block(2, 7, 'U', true),
-      block(3, 7, 'N', true),
-      block(4, 7, 'T', true),
-      block(5, 7, 'R', true),
-      block(6, 7, 'Y', true),
-    ]
-
-    const words = findWords(blocks)
-    const wordTexts = words.map(w => w.word)
-    expect(wordTexts).toContain('COUNTRY')
-  })
-
-  test('finds 8-letter words', () => {
-    const blocks = [
-      block(0, 7, 'C', true),
-      block(1, 7, 'O', true),
-      block(2, 7, 'M', true),
-      block(3, 7, 'P', true),
-      block(4, 7, 'U', true),
-      block(5, 7, 'T', true),
-      block(6, 7, 'E', true),
-      block(7, 7, 'R', true),
-    ]
-
-    const words = findWords(blocks)
-    const wordTexts = words.map(w => w.word)
-    expect(wordTexts).toContain('COMPUTER')
-  })
+  // Note: 7 and 8 letter words were removed from the dictionary
+  // The game now supports only 3-6 letter words
 })

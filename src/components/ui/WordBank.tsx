@@ -5,9 +5,7 @@ import {
   FOUR_LETTER_WORDS,
   FIVE_LETTER_WORDS,
   SIX_LETTER_WORDS,
-  SEVEN_LETTER_WORDS,
-  EIGHT_LETTER_WORDS,
-} from '../../lib/dictionary/words'
+} from '../../lib/dictionary'
 
 interface WordBankProps {
   onBack: () => void
@@ -19,8 +17,6 @@ export default function WordBank({ onBack }: WordBankProps) {
     { length: 4, words: Array.from(FOUR_LETTER_WORDS).sort() },
     { length: 5, words: Array.from(FIVE_LETTER_WORDS).sort() },
     { length: 6, words: Array.from(SIX_LETTER_WORDS).sort() },
-    { length: 7, words: Array.from(SEVEN_LETTER_WORDS).sort() },
-    { length: 8, words: Array.from(EIGHT_LETTER_WORDS).sort() },
   ], [])
 
   const [openSections, setOpenSections] = useState<Set<number>>(new Set([3, 4]))

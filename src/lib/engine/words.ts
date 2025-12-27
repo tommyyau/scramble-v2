@@ -1,6 +1,6 @@
 import { Block, GameState, FoundWord } from '../types'
 import { GRID_WIDTH, GRID_HEIGHT, MIN_WORD_LENGTH } from '../constants'
-import { isValidWord } from '../dictionary/words'
+import { isValidWord } from '../dictionary'
 import { calculateWordScore } from './scoring'
 
 /**

@@ -1,4 +1,4 @@
-import { FOUR_LETTER_WORDS } from '../dictionary/words'
+import { FOUR_LETTER_WORDS } from '../dictionary'
 
 const fourLetterWordsArray = Array.from(FOUR_LETTER_WORDS)
 
