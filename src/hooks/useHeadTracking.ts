@@ -1,7 +1,29 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { FaceMesh } from '@mediapipe/face_mesh'
-import { Camera } from '@mediapipe/camera_utils'
 import type { HeadTrackingStatus, HeadPose, TiltDirection } from '../lib/headtracking/types'
+
+// Types for MediaPipe (loaded dynamically to avoid bundling issues)
+type FaceMeshType = {
+  new (config: { locateFile: (file: string) => string }): FaceMeshInstance
+}
+type FaceMeshInstance = {
+  setOptions: (options: Record<string, unknown>) => void
+  onResults: (callback: (results: FaceMeshResults) => void) => void
+  send: (input: { image: HTMLVideoElement }) => Promise<void>
+  close: () => void
+}
+type FaceMeshResults = {
+  multiFaceLandmarks?: Array<Array<{ x: number; y: number; z: number }>>
+}
+type CameraType = {
+  new (
+    video: HTMLVideoElement,
+    config: { onFrame: () => Promise<void>; width: number; height: number }
+  ): CameraInstance
+}
+type CameraInstance = {
+  start: () => Promise<void>
+  stop: () => void
+}
 import {
   calculateHeadPose,
   isInNeutralZone,
@@ -44,8 +66,8 @@ export function useHeadTracking({
   const [isCalibrated, setIsCalibrated] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const faceMeshRef = useRef<FaceMesh | null>(null)
-  const cameraRef = useRef<Camera | null>(null)
+  const faceMeshRef = useRef<FaceMeshInstance | null>(null)
+  const cameraRef = useRef<CameraInstance | null>(null)
 
   const neutralPositionRef = useRef<HeadPose | null>(null)
   const canTriggerActionRef = useRef(true)
@@ -216,9 +238,18 @@ export function useHeadTracking({
 
       setStatus('loading-model')
 
+      // Dynamically import MediaPipe to avoid bundling issues in production
+      const [faceMeshModule, cameraModule] = await Promise.all([
+        import('@mediapipe/face_mesh'),
+        import('@mediapipe/camera_utils'),
+      ])
+
+      const FaceMesh = faceMeshModule.FaceMesh as unknown as FaceMeshType
+      const Camera = cameraModule.Camera as unknown as CameraType
+
       // Initialize FaceMesh
       const faceMesh = new FaceMesh({
-        locateFile: (file) => {
+        locateFile: (file: string) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
         },
       })
