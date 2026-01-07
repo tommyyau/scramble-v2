@@ -118,6 +118,29 @@ export const MODE_CONFIGS = {
     hasBonusWords: true,
     usesSeed: true,
   },
+  'classic-experimental': {
+    dropSpeed: INITIAL_DROP_SPEED,
+    speedIncreases: true,
+    hasTimer: false,
+    hasBonusWords: true,
+    usesHeadTracking: true,
+  },
+}
+
+// Head tracking configuration
+export const HEAD_TRACKING_CONFIG = {
+  // How far head must tilt to trigger action (normalized -1 to 1 range)
+  TILT_THRESHOLD: 0.15, // ~15 degrees
+  // How close to neutral before next action can trigger
+  NEUTRAL_THRESHOLD: 0.08, // Must return within ~5 degrees of neutral
+  // Pitch threshold for drop action
+  DROP_THRESHOLD: 0.20, // Tilt head down ~20 degrees
+  // Minimum time between actions (ms)
+  ACTION_COOLDOWN: 150,
+  // Detection frame rate (lower = better performance)
+  DETECTION_FPS: 15,
+  // Flash duration for control feedback (ms)
+  CONTROL_FLASH_DURATION: 150,
 }
 
 // Default settings

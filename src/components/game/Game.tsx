@@ -1,9 +1,11 @@
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { useGameStore } from '../../stores/game'
 import { GameMode } from '../../lib/types'
-import { MODE_CONFIGS, getDropSpeedForLevel } from '../../lib/constants'
+import { MODE_CONFIGS, getDropSpeedForLevel, HEAD_TRACKING_CONFIG } from '../../lib/constants'
 import { submitScore, submitScoreToCloud } from '../../lib/scores'
 import { isSoundEnabled, setSoundEnabled } from '../../lib/sounds'
+import { useHeadTracking } from '../../hooks/useHeadTracking'
+import type { TiltDirection } from '../../lib/headtracking/types'
 import Board from './Board'
 import Controls from './Controls'
 import ScoreDisplay from './ScoreDisplay'
@@ -14,7 +16,9 @@ import WordPopup from './WordPopup'
 import ChainIndicator from '../effects/ChainIndicator'
 import LevelUpIndicator from '../effects/LevelUpIndicator'
 import FloatingScore from '../effects/FloatingScore'
-import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check, Volume2, VolumeX } from 'lucide-react'
+import { CameraPreview } from '../headtracking/CameraPreview'
+import { CalibrationOverlay } from '../headtracking/CalibrationOverlay'
+import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check, Volume2, VolumeX, RotateCcw } from 'lucide-react'
 
 const LEVEL_UP_INTERVAL = 60 // seconds between level ups
 
@@ -53,7 +57,10 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
   const [scoreSaved, setScoreSaved] = useState(false)
   const [soundOn, setSoundOn] = useState(isSoundEnabled)
   const [floatingScores, setFloatingScores] = useState<FloatingScoreEvent[]>([])
+  const [flashDirection, setFlashDirection] = useState<TiltDirection>(null)
+  const [showCalibration, setShowCalibration] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const {
     blocks,
@@ -88,13 +95,84 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     levelUp,
   } = useGameStore()
 
+  // Flash direction handler for head tracking visual feedback
+  const handleDirectionDetected = useCallback((direction: TiltDirection) => {
+    // Clear any existing timeout
+    if (flashTimeoutRef.current) {
+      clearTimeout(flashTimeoutRef.current)
+    }
+
+    // Set the flash direction
+    setFlashDirection(direction)
+
+    // Clear after the configured duration
+    flashTimeoutRef.current = setTimeout(() => {
+      setFlashDirection(null)
+    }, HEAD_TRACKING_CONFIG.CONTROL_FLASH_DURATION)
+  }, [])
+
+  // Track pending mode for head tracking (game starts after calibration)
+  const [pendingMode, setPendingMode] = useState<GameMode | null>(null)
+
+  // Head tracking hook - only active for classic-experimental mode
+  const isHeadTrackingMode = mode === 'classic-experimental'
+  const {
+    status: headTrackingStatus,
+    error: headTrackingError,
+    isCalibrated,
+    videoRef,
+    startCalibration,
+    recalibrate,
+    stop: stopHeadTracking,
+    proceedToGame,
+  } = useHeadTracking({
+    enabled: isHeadTrackingMode && !showModeSelect && !gameOver && !isPaused,
+    onMoveLeft: moveLeft,
+    onMoveRight: moveRight,
+    onDrop: drop,
+    onDirectionDetected: handleDirectionDetected,
+  })
+
   // Handle mode selection
   const handleSelectMode = useCallback((selectedMode: GameMode) => {
     setShowModeSelect(false)
     setSprintTimer(120)
     setLevelTimer(LEVEL_UP_INTERVAL)
+
+    // For head tracking mode, show calibration BEFORE starting game
+    if (selectedMode === 'classic-experimental') {
+      setPendingMode(selectedMode)
+      setShowCalibration(true)
+      // Don't start game yet - wait for calibration to complete
+      return
+    }
+
     startGame(selectedMode)
   }, [startGame])
+
+  // Handle calibration start button click
+  const handleCalibrationStart = useCallback(async () => {
+    await startCalibration()
+  }, [startCalibration])
+
+  // Handle proceeding to game after calibration complete
+  const handleProceedToGame = useCallback(() => {
+    if (pendingMode) {
+      startGame(pendingMode)
+      setPendingMode(null)
+      setShowCalibration(false)
+      proceedToGame()
+    }
+  }, [pendingMode, startGame, proceedToGame])
+
+  // Handle calibration cancel
+  const handleCalibrationCancel = useCallback(() => {
+    stopHeadTracking()
+    setShowCalibration(false)
+    setPendingMode(null)
+    reset()
+    setShowModeSelect(true)
+  }, [stopHeadTracking, reset])
 
   // Game loop for automatic dropping with level-based speed
   useEffect(() => {
@@ -237,9 +315,12 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
 
   const handleBackToMenu = useCallback(() => {
     setScoreSaved(false)
+    if (isHeadTrackingMode) {
+      stopHeadTracking()
+    }
     reset()
     setShowModeSelect(true)
-  }, [reset])
+  }, [reset, isHeadTrackingMode, stopHeadTracking])
 
   // Show mode selection
   if (showModeSelect) {
@@ -263,6 +344,17 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      {/* Hidden video element for head tracking - always in DOM for camera stream */}
+      {(isHeadTrackingMode || pendingMode === 'classic-experimental') && (
+        <video
+          ref={videoRef as React.RefObject<HTMLVideoElement>}
+          autoPlay
+          playsInline
+          muted
+          className="hidden"
+        />
+      )}
+
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3">
         <button
@@ -274,7 +366,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
         </button>
         <div className="text-center">
           <span className="text-xs uppercase tracking-wider text-slate-400">
-            {mode === 'zen' ? 'Zen Mode' : mode === 'sprint' ? 'Sprint' : mode === 'daily' ? 'Daily' : 'Classic'}
+            {mode === 'zen' ? 'Zen Mode' : mode === 'sprint' ? 'Sprint' : mode === 'daily' ? 'Daily' : mode === 'classic-experimental' ? 'Experimental' : 'Classic'}
           </span>
         </div>
         <button
@@ -499,18 +591,26 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
           </div>
         )}
 
-        {/* Touch controls */}
-        <Controls
-          onMoveLeft={moveLeft}
-          onMoveRight={moveRight}
-          onDrop={drop}
-          disabled={isEffectivelyGameOver || isPaused}
-        />
+        {/* Touch controls with camera preview for head tracking */}
+        <div className="flex items-center justify-center gap-4">
+          {isHeadTrackingMode && isCalibrated && (
+            <CameraPreview videoRef={videoRef} status={headTrackingStatus} />
+          )}
+          <Controls
+            onMoveLeft={moveLeft}
+            onMoveRight={moveRight}
+            onDrop={drop}
+            disabled={isEffectivelyGameOver || isPaused}
+            flashDirection={isHeadTrackingMode ? flashDirection : undefined}
+          />
+        </div>
 
         {/* Instructions */}
         <div className="mt-4 text-center text-xs text-slate-500">
           {mode === 'zen' ? (
             <span>Take your time. Tap drop when ready.</span>
+          ) : mode === 'classic-experimental' ? (
+            <span>Tilt your head left, right, or down to control</span>
           ) : (
             <>
               <span className="hidden sm:inline">
@@ -523,6 +623,31 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
           )}
         </div>
       </main>
+
+      {/* Head tracking calibration overlay */}
+      {(isHeadTrackingMode || pendingMode === 'classic-experimental') && showCalibration && (
+        <CalibrationOverlay
+          videoRef={videoRef}
+          status={headTrackingStatus}
+          error={headTrackingError}
+          onStartCalibration={handleCalibrationStart}
+          onProceedToGame={handleProceedToGame}
+          onCancel={handleCalibrationCancel}
+        />
+      )}
+
+      {/* Re-calibrate button in pause menu for head tracking mode */}
+      {isHeadTrackingMode && isPaused && !isEffectivelyGameOver && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+          <button
+            onClick={recalibrate}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black rounded-lg font-medium hover:bg-amber-400 transition-colors"
+          >
+            <RotateCcw size={16} />
+            Re-calibrate
+          </button>
+        </div>
+      )}
     </div>
   )
 }
