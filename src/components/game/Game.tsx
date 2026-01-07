@@ -14,6 +14,10 @@ import WordPopup from './WordPopup'
 import ChainIndicator from '../effects/ChainIndicator'
 import LevelUpIndicator from '../effects/LevelUpIndicator'
 import FloatingScore from '../effects/FloatingScore'
+import CalibrationOverlay from '../head-tracking/CalibrationOverlay'
+import HeadTrackingPreview from '../head-tracking/HeadTrackingPreview'
+import { useHeadTracking } from '../../hooks/useHeadTracking'
+import { CalibrationData, HeadGesture } from '../../lib/head-tracking/types'
 import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check, Volume2, VolumeX } from 'lucide-react'
 
 const LEVEL_UP_INTERVAL = 60 // seconds between level ups
@@ -55,6 +59,12 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
   const [floatingScores, setFloatingScores] = useState<FloatingScoreEvent[]>([])
   const nameInputRef = useRef<HTMLInputElement>(null)
 
+  // Head tracking state
+  const [showCalibration, setShowCalibration] = useState(false)
+  const [calibrationData, setCalibrationData] = useState<CalibrationData | null>(null)
+  const [highlightedButton, setHighlightedButton] = useState<'left' | 'right' | 'drop' | null>(null)
+  const [pendingMode, setPendingMode] = useState<GameMode | null>(null)
+
   const {
     blocks,
     nextLetter,
@@ -88,13 +98,68 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     levelUp,
   } = useGameStore()
 
+  // Head tracking hook - only active in classic-experimental mode
+  const isHeadTrackingMode = mode === 'classic-experimental'
+  const handleGestureChange = useCallback((gesture: HeadGesture) => {
+    if (gesture === 'left') {
+      setHighlightedButton('left')
+    } else if (gesture === 'right') {
+      setHighlightedButton('right')
+    } else if (gesture === 'down') {
+      setHighlightedButton('drop')
+    } else {
+      setHighlightedButton(null)
+    }
+  }, [])
+
+  const {
+    isTracking,
+    currentGesture,
+    videoRef,
+  } = useHeadTracking({
+    enabled: isHeadTrackingMode && !showModeSelect && !showCalibration && !gameOver && !isPaused,
+    calibrationData,
+    onMoveLeft: moveLeft,
+    onMoveRight: moveRight,
+    onDrop: drop,
+    onGestureChange: handleGestureChange,
+  })
+
   // Handle mode selection
   const handleSelectMode = useCallback((selectedMode: GameMode) => {
+    if (selectedMode === 'classic-experimental') {
+      // Always recalibrate at the start of each game
+      setPendingMode(selectedMode)
+      setShowModeSelect(false)
+      setShowCalibration(true)
+      return
+    }
+
     setShowModeSelect(false)
     setSprintTimer(120)
     setLevelTimer(LEVEL_UP_INTERVAL)
     startGame(selectedMode)
   }, [startGame])
+
+  // Handle calibration complete
+  const handleCalibrationComplete = useCallback((data: CalibrationData) => {
+    setCalibrationData(data)
+    setShowCalibration(false)
+    setShowModeSelect(false)
+    setSprintTimer(120)
+    setLevelTimer(LEVEL_UP_INTERVAL)
+    if (pendingMode) {
+      startGame(pendingMode)
+      setPendingMode(null)
+    }
+  }, [startGame, pendingMode])
+
+  // Handle calibration cancel
+  const handleCalibrationCancel = useCallback(() => {
+    setShowCalibration(false)
+    setPendingMode(null)
+    setShowModeSelect(true)
+  }, [])
 
   // Game loop for automatic dropping with level-based speed
   useEffect(() => {
@@ -252,6 +317,16 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     )
   }
 
+  // Show calibration overlay for head tracking
+  if (showCalibration) {
+    return (
+      <CalibrationOverlay
+        onComplete={handleCalibrationComplete}
+        onCancel={handleCalibrationCancel}
+      />
+    )
+  }
+
   const isSprintTimeUp = mode === 'sprint' && sprintTimer === 0
   const isEffectivelyGameOver = gameOver || isSprintTimeUp
 
@@ -274,7 +349,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
         </button>
         <div className="text-center">
           <span className="text-xs uppercase tracking-wider text-slate-400">
-            {mode === 'zen' ? 'Zen Mode' : mode === 'sprint' ? 'Sprint' : mode === 'daily' ? 'Daily' : 'Classic'}
+            {mode === 'zen' ? 'Zen Mode' : mode === 'sprint' ? 'Sprint' : mode === 'daily' ? 'Daily' : mode === 'classic-experimental' ? 'Experimental' : 'Classic'}
           </span>
         </div>
         <button
@@ -499,17 +574,29 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
           </div>
         )}
 
+        {/* Head tracking video preview - always render when in head tracking mode so camera can attach */}
+        {isHeadTrackingMode && calibrationData && (
+          <HeadTrackingPreview
+            videoRef={videoRef}
+            currentGesture={currentGesture}
+            isTracking={isTracking}
+          />
+        )}
+
         {/* Touch controls */}
         <Controls
           onMoveLeft={moveLeft}
           onMoveRight={moveRight}
           onDrop={drop}
           disabled={isEffectivelyGameOver || isPaused}
+          highlightedButton={isHeadTrackingMode ? highlightedButton : undefined}
         />
 
         {/* Instructions */}
         <div className="mt-4 text-center text-xs text-slate-500">
-          {mode === 'zen' ? (
+          {mode === 'classic-experimental' ? (
+            <span>Move your head left, right, or down to control</span>
+          ) : mode === 'zen' ? (
             <span>Take your time. Tap drop when ready.</span>
           ) : (
             <>

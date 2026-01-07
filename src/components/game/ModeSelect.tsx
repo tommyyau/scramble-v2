@@ -1,5 +1,5 @@
 import { GameMode } from '../../lib/types'
-import { Gamepad2, Leaf, Timer, Calendar, Book, Trophy } from 'lucide-react'
+import { Gamepad2, Leaf, Timer, Calendar, Book, Trophy, Camera } from 'lucide-react'
 
 interface ModeSelectProps {
   onSelectMode: (mode: GameMode) => void
@@ -7,7 +7,7 @@ interface ModeSelectProps {
   onShowLeaderboard?: () => void
 }
 
-const modes: { mode: GameMode; name: string; description: string; icon: typeof Gamepad2 }[] = [
+const modes: { mode: GameMode; name: string; description: string; icon: typeof Gamepad2; badge?: string }[] = [
   {
     mode: 'classic',
     name: 'Classic',
@@ -32,6 +32,13 @@ const modes: { mode: GameMode; name: string; description: string; icon: typeof G
     description: 'Same puzzle for everyone. Compare scores!',
     icon: Calendar,
   },
+  {
+    mode: 'classic-experimental',
+    name: 'Classic Experimental',
+    description: 'Control with your head! Uses camera for tracking.',
+    icon: Camera,
+    badge: 'Experimental',
+  },
 ]
 
 export default function ModeSelect({ onSelectMode, onShowWordBank, onShowLeaderboard }: ModeSelectProps) {
@@ -41,7 +48,7 @@ export default function ModeSelect({ onSelectMode, onShowWordBank, onShowLeaderb
       <p className="text-slate-400 mb-8">A word-finding puzzle game</p>
 
       <div className="grid gap-4 w-full max-w-md">
-        {modes.map(({ mode, name, description, icon: Icon }) => (
+        {modes.map(({ mode, name, description, icon: Icon, badge }) => (
           <button
             key={mode}
             onClick={() => onSelectMode(mode)}
@@ -52,8 +59,14 @@ export default function ModeSelect({ onSelectMode, onShowWordBank, onShowLeaderb
               hover:bg-slate-700/50 hover:border-primary/50
               transition-all group
               text-left
+              relative
             "
           >
+            {badge && (
+              <div className="absolute top-2 right-2 px-2 py-0.5 bg-accent/20 text-accent text-xs font-medium rounded-full">
+                {badge}
+              </div>
+            )}
             <div className="p-3 rounded-lg bg-primary/20 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
               <Icon size={24} />
             </div>

@@ -68,21 +68,23 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
     }
   }
 
-  const getModeLabel = (mode: GameMode) => {
+  const getModeLabel = (mode: GameMode): string => {
     switch (mode) {
       case 'classic': return 'Classic'
       case 'zen': return 'Zen'
       case 'sprint': return 'Sprint'
       case 'daily': return 'Daily'
+      case 'classic-experimental': return 'Experimental'
     }
   }
 
-  const getModeColor = (mode: GameMode) => {
+  const getModeColor = (mode: GameMode): string => {
     switch (mode) {
       case 'classic': return 'bg-primary/20 text-primary'
       case 'zen': return 'bg-secondary/20 text-secondary'
       case 'sprint': return 'bg-purple-500/20 text-purple-400'
       case 'daily': return 'bg-accent/20 text-accent'
+      case 'classic-experimental': return 'bg-orange-500/20 text-orange-400'
     }
   }
 

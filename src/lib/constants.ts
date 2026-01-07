@@ -118,6 +118,12 @@ export const MODE_CONFIGS = {
     hasBonusWords: true,
     usesSeed: true,
   },
+  'classic-experimental': {
+    dropSpeed: INITIAL_DROP_SPEED,
+    speedIncreases: true,
+    hasTimer: false,
+    hasBonusWords: true,
+  },
 }
 
 // Default settings

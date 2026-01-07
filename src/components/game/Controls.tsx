@@ -5,15 +5,16 @@ interface ControlsProps {
   onMoveRight: () => void
   onDrop: () => void
   disabled?: boolean
+  highlightedButton?: 'left' | 'right' | 'drop' | null
 }
 
-export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled }: ControlsProps) {
+export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled, highlightedButton }: ControlsProps) {
   return (
     <div className="flex items-center justify-center gap-4 mt-4">
       <button
         onClick={onMoveLeft}
         disabled={disabled}
-        className="
+        className={`
           w-16 h-16 rounded-full
           bg-slate-700/80 text-white
           flex items-center justify-center
@@ -21,7 +22,8 @@ export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled }: 
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-all
           shadow-lg
-        "
+          ${highlightedButton === 'left' ? 'ring-4 ring-accent ring-offset-2 ring-offset-slate-900 scale-105 bg-slate-600' : ''}
+        `}
         aria-label="Move left"
       >
         <ChevronLeft size={32} />
@@ -30,7 +32,7 @@ export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled }: 
       <button
         onClick={onDrop}
         disabled={disabled}
-        className="
+        className={`
           w-20 h-20 rounded-full
           bg-primary text-white
           flex items-center justify-center
@@ -38,7 +40,8 @@ export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled }: 
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-all
           shadow-lg
-        "
+          ${highlightedButton === 'drop' ? 'ring-4 ring-accent ring-offset-2 ring-offset-slate-900 scale-105' : ''}
+        `}
         aria-label="Drop"
       >
         <ChevronDown size={40} />
@@ -47,7 +50,7 @@ export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled }: 
       <button
         onClick={onMoveRight}
         disabled={disabled}
-        className="
+        className={`
           w-16 h-16 rounded-full
           bg-slate-700/80 text-white
           flex items-center justify-center
@@ -55,7 +58,8 @@ export default function Controls({ onMoveLeft, onMoveRight, onDrop, disabled }: 
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-all
           shadow-lg
-        "
+          ${highlightedButton === 'right' ? 'ring-4 ring-accent ring-offset-2 ring-offset-slate-900 scale-105 bg-slate-600' : ''}
+        `}
         aria-label="Move right"
       >
         <ChevronRight size={32} />

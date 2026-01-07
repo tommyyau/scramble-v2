@@ -8,4 +8,11 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  build: {
+    rollupOptions: {
+      // Externalize MediaPipe - these packages are pre-minified and break when
+      // Rollup re-bundles them. Load from CDN via script tags in index.html instead.
+      external: ['@mediapipe/face_mesh', '@mediapipe/camera_utils'],
+    },
+  },
 })
