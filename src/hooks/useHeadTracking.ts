@@ -239,13 +239,17 @@ export function useHeadTracking({
       setStatus('loading-model')
 
       // Dynamically import MediaPipe to avoid bundling issues in production
+      // These packages export via .default in ESM context
       const [faceMeshModule, cameraModule] = await Promise.all([
         import('@mediapipe/face_mesh'),
         import('@mediapipe/camera_utils'),
       ])
 
-      const FaceMesh = faceMeshModule.FaceMesh as unknown as FaceMeshType
-      const Camera = cameraModule.Camera as unknown as CameraType
+      // Access from default export (ESM interop)
+      const faceMeshExports = (faceMeshModule.default || faceMeshModule) as Record<string, unknown>
+      const cameraExports = (cameraModule.default || cameraModule) as Record<string, unknown>
+      const FaceMesh = faceMeshExports.FaceMesh as unknown as FaceMeshType
+      const Camera = cameraExports.Camera as unknown as CameraType
 
       // Initialize FaceMesh
       const faceMesh = new FaceMesh({
