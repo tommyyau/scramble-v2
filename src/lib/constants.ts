@@ -125,6 +125,13 @@ export const MODE_CONFIGS = {
     hasBonusWords: true,
     usesHeadTracking: true,
   },
+  'classic-hand': {
+    dropSpeed: INITIAL_DROP_SPEED,
+    speedIncreases: true,
+    hasTimer: false,
+    hasBonusWords: true,
+    usesHandTracking: true,
+  },
 }
 
 // Head tracking configuration
@@ -141,6 +148,28 @@ export const HEAD_TRACKING_CONFIG = {
   DETECTION_FPS: 15,
   // Flash duration for control feedback (ms)
   CONTROL_FLASH_DURATION: 150,
+}
+
+// Hand tracking configuration - position-based tracking with full calibration
+export const HAND_TRACKING_CONFIG = {
+  // Calibration timing (at ~15fps)
+  CENTER_CALIBRATION_SAMPLES: 75,     // ~5 seconds for center position
+  MOVEMENT_CALIBRATION_SAMPLES: 75,   // ~5 seconds for each direction
+  COUNTDOWN_SECONDS: 3,               // Countdown before each movement capture
+  RETURN_SECONDS: 3,                  // Time to return to center between movements
+  // Threshold calculation - direction-specific (unified with visual zone)
+  THRESHOLD_RATIO_HORIZONTAL: 0.50,   // Trigger at 50% of calibrated left/right movement
+  THRESHOLD_RATIO_DOWN: 0.40,         // Trigger at 40% of calibrated down movement (more forgiving)
+  // Minimum time between actions (ms)
+  ACTION_COOLDOWN: 150,
+  // Detection frame rate (lower = better performance)
+  DETECTION_FPS: 15,
+  // Flash duration for control feedback (ms)
+  CONTROL_FLASH_DURATION: 150,
+  // Smoothing factor for exponential moving average (0-1, higher = less smoothing)
+  SMOOTHING_ALPHA: 0.6,               // Increased from 0.4 for faster response
+  // Enable debug overlay showing position values
+  DEBUG_MODE: false,
 }
 
 // Default settings

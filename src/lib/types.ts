@@ -70,7 +70,7 @@ export interface ChainResult extends GameState {
   chainWordsWithScores: ChainWordInfo[]  // Words found during chain with their multipliers
 }
 
-export type GameMode = 'classic' | 'zen' | 'sprint' | 'daily' | 'classic-experimental'
+export type GameMode = 'classic' | 'zen' | 'sprint' | 'daily' | 'classic-experimental' | 'classic-hand'
 
 
 export interface GameSettings {

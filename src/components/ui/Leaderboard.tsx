@@ -75,6 +75,7 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
       case 'sprint': return 'Sprint'
       case 'daily': return 'Daily'
       case 'classic-experimental': return 'Experimental'
+      case 'classic-hand': return 'Hand'
     }
   }
 
@@ -85,6 +86,7 @@ export default function Leaderboard({ onBack }: LeaderboardProps) {
       case 'sprint': return 'bg-purple-500/20 text-purple-400'
       case 'daily': return 'bg-accent/20 text-accent'
       case 'classic-experimental': return 'bg-amber-500/20 text-amber-400'
+      case 'classic-hand': return 'bg-teal-500/20 text-teal-400'
     }
   }
 

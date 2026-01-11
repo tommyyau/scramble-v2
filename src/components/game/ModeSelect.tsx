@@ -1,5 +1,5 @@
 import { GameMode } from '../../lib/types'
-import { Gamepad2, Leaf, Timer, Calendar, Book, Trophy, Camera } from 'lucide-react'
+import { Gamepad2, Leaf, Timer, Calendar, Book, Trophy, Camera, Hand } from 'lucide-react'
 
 interface ModeSelectProps {
   onSelectMode: (mode: GameMode) => void
@@ -38,6 +38,13 @@ const modes: { mode: GameMode; name: string; description: string; icon: typeof G
     description: 'Control with your head! Tilt left, right, or down.',
     icon: Camera,
     badge: 'Head Tracking',
+  },
+  {
+    mode: 'classic-hand',
+    name: 'Classic Hand',
+    description: 'Control with your hand! Move left, right, or down.',
+    icon: Hand,
+    badge: 'Hand Controller',
   },
 ]
 

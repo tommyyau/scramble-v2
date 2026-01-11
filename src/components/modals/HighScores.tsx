@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Calendar, Zap, Leaf, Camera } from 'lucide-react'
+import { Trophy, Calendar, Zap, Leaf, Camera, Hand } from 'lucide-react'
 import { GameMode } from '../../lib/types'
 
 interface Score {
@@ -30,6 +30,7 @@ const modeIcons: Record<GameMode, typeof Trophy> = {
   sprint: Zap,
   daily: Calendar,
   'classic-experimental': Camera,
+  'classic-hand': Hand,
 }
 
 const modeLabels: Record<GameMode, string> = {
@@ -38,6 +39,7 @@ const modeLabels: Record<GameMode, string> = {
   sprint: 'Sprint',
   daily: 'Daily',
   'classic-experimental': 'Experimental',
+  'classic-hand': 'Hand',
 }
 
 export default function HighScores({ mode = 'classic' }: HighScoresProps) {

@@ -5,7 +5,9 @@ import { MODE_CONFIGS, getDropSpeedForLevel, HEAD_TRACKING_CONFIG } from '../../
 import { submitScore, submitScoreToCloud } from '../../lib/scores'
 import { isSoundEnabled, setSoundEnabled } from '../../lib/sounds'
 import { useHeadTracking } from '../../hooks/useHeadTracking'
+import { useHandTracking } from '../../hooks/useHandTracking'
 import type { TiltDirection } from '../../lib/headtracking/types'
+import type { HandDirection } from '../../lib/handtracking/types'
 import Board from './Board'
 import Controls from './Controls'
 import ScoreDisplay from './ScoreDisplay'
@@ -18,6 +20,8 @@ import LevelUpIndicator from '../effects/LevelUpIndicator'
 import FloatingScore from '../effects/FloatingScore'
 import { CameraPreview } from '../headtracking/CameraPreview'
 import { CalibrationOverlay } from '../headtracking/CalibrationOverlay'
+import { CameraPreview as HandCameraPreview } from '../handtracking/CameraPreview'
+import { CalibrationOverlay as HandCalibrationOverlay } from '../handtracking/CalibrationOverlay'
 import { ArrowLeft, Pause, Play, Trophy, Zap, Type, TrendingUp, Save, Check, Volume2, VolumeX, RotateCcw } from 'lucide-react'
 
 const LEVEL_UP_INTERVAL = 60 // seconds between level ups
@@ -95,15 +99,15 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     levelUp,
   } = useGameStore()
 
-  // Flash direction handler for head tracking visual feedback
-  const handleDirectionDetected = useCallback((direction: TiltDirection) => {
+  // Flash direction handler for head/hand tracking visual feedback
+  const handleDirectionDetected = useCallback((direction: TiltDirection | HandDirection) => {
     // Clear any existing timeout
     if (flashTimeoutRef.current) {
       clearTimeout(flashTimeoutRef.current)
     }
 
-    // Set the flash direction
-    setFlashDirection(direction)
+    // Set the flash direction (both TiltDirection and HandDirection have same values)
+    setFlashDirection(direction as TiltDirection)
 
     // Clear after the configured duration
     flashTimeoutRef.current = setTimeout(() => {
@@ -119,12 +123,12 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
   const {
     status: headTrackingStatus,
     error: headTrackingError,
-    isCalibrated,
-    videoRef,
-    startCalibration,
-    recalibrate,
+    isCalibrated: isHeadCalibrated,
+    videoRef: headVideoRef,
+    startCalibration: startHeadCalibration,
+    recalibrate: recalibrateHead,
     stop: stopHeadTracking,
-    proceedToGame,
+    proceedToGame: proceedToHeadGame,
   } = useHeadTracking({
     enabled: isHeadTrackingMode && !showModeSelect && !gameOver && !isPaused,
     onMoveLeft: moveLeft,
@@ -132,6 +136,36 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     onDrop: drop,
     onDirectionDetected: handleDirectionDetected,
   })
+
+  // Hand tracking hook - only active for classic-hand mode
+  const isHandTrackingMode = mode === 'classic-hand'
+  const {
+    status: handTrackingStatus,
+    error: handTrackingError,
+    isCalibrated: isHandCalibrated,
+    videoRef: handVideoRef,
+    landmarks: handLandmarks,
+    detectedDirection: handDetectedDirection,
+    triggerState: handTriggerState,
+    calibrationProgress: handCalibrationProgress,
+    calibrationData: handCalibrationData,
+    currentHandPosition,
+    countdownSeconds: handCountdownSeconds,
+    verificationState: handVerificationState,
+    startCalibration: startHandCalibration,
+    recalibrate: recalibrateHand,
+    commitCalibration: commitHandCalibration,
+    stop: stopHandTracking,
+  } = useHandTracking({
+    enabled: isHandTrackingMode && !showModeSelect && !gameOver && !isPaused,
+    onMoveLeft: moveLeft,
+    onMoveRight: moveRight,
+    onDrop: drop,
+    onDirectionDetected: handleDirectionDetected,
+  })
+
+  // Combined tracking state
+  const isTrackingMode = isHeadTrackingMode || isHandTrackingMode
 
   // Handle mode selection
   const handleSelectMode = useCallback((selectedMode: GameMode) => {
@@ -147,32 +181,63 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
       return
     }
 
+    // For hand tracking mode, show calibration BEFORE starting game
+    if (selectedMode === 'classic-hand') {
+      setPendingMode(selectedMode)
+      setShowCalibration(true)
+      // Don't start game yet - wait for calibration to complete
+      return
+    }
+
     startGame(selectedMode)
   }, [startGame])
 
   // Handle calibration start button click
   const handleCalibrationStart = useCallback(async () => {
-    await startCalibration()
-  }, [startCalibration])
+    if (pendingMode === 'classic-experimental') {
+      await startHeadCalibration()
+    } else if (pendingMode === 'classic-hand') {
+      await startHandCalibration()
+    }
+  }, [pendingMode, startHeadCalibration, startHandCalibration])
 
   // Handle proceeding to game after calibration complete
   const handleProceedToGame = useCallback(() => {
     if (pendingMode) {
       startGame(pendingMode)
+      if (pendingMode === 'classic-experimental') {
+        proceedToHeadGame()
+      }
       setPendingMode(null)
       setShowCalibration(false)
-      proceedToGame()
     }
-  }, [pendingMode, startGame, proceedToGame])
+  }, [pendingMode, startGame, proceedToHeadGame])
+
+  // Handle hand tracking commit (user clicks Start Game after verification)
+  const handleHandCalibrationCommit = useCallback(() => {
+    if (pendingMode === 'classic-hand') {
+      commitHandCalibration()
+      startGame(pendingMode)
+      setPendingMode(null)
+      setShowCalibration(false)
+    }
+  }, [pendingMode, startGame, commitHandCalibration])
 
   // Handle calibration cancel
   const handleCalibrationCancel = useCallback(() => {
-    stopHeadTracking()
+    if (pendingMode === 'classic-experimental') {
+      stopHeadTracking()
+    } else if (pendingMode === 'classic-hand') {
+      stopHandTracking()
+    }
     setShowCalibration(false)
     setPendingMode(null)
     reset()
     setShowModeSelect(true)
-  }, [stopHeadTracking, reset])
+  }, [pendingMode, stopHeadTracking, stopHandTracking, reset])
+
+  // Note: Hand tracking now requires user to verify movements and click "Start Game"
+  // The handleHandCalibrationCommit callback handles transitioning to gameplay
 
   // Game loop for automatic dropping with level-based speed
   useEffect(() => {
@@ -318,9 +383,12 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
     if (isHeadTrackingMode) {
       stopHeadTracking()
     }
+    if (isHandTrackingMode) {
+      stopHandTracking()
+    }
     reset()
     setShowModeSelect(true)
-  }, [reset, isHeadTrackingMode, stopHeadTracking])
+  }, [reset, isHeadTrackingMode, isHandTrackingMode, stopHeadTracking, stopHandTracking])
 
   // Show mode selection
   if (showModeSelect) {
@@ -347,7 +415,18 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
       {/* Hidden video element for head tracking - always in DOM for camera stream */}
       {(isHeadTrackingMode || pendingMode === 'classic-experimental') && (
         <video
-          ref={videoRef as React.RefObject<HTMLVideoElement>}
+          ref={headVideoRef as React.RefObject<HTMLVideoElement>}
+          autoPlay
+          playsInline
+          muted
+          className="hidden"
+        />
+      )}
+
+      {/* Hidden video element for hand tracking - always in DOM for camera stream */}
+      {(isHandTrackingMode || pendingMode === 'classic-hand') && (
+        <video
+          ref={handVideoRef as React.RefObject<HTMLVideoElement>}
           autoPlay
           playsInline
           muted
@@ -366,7 +445,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
         </button>
         <div className="text-center">
           <span className="text-xs uppercase tracking-wider text-slate-400">
-            {mode === 'zen' ? 'Zen Mode' : mode === 'sprint' ? 'Sprint' : mode === 'daily' ? 'Daily' : mode === 'classic-experimental' ? 'Experimental' : 'Classic'}
+            {mode === 'zen' ? 'Zen Mode' : mode === 'sprint' ? 'Sprint' : mode === 'daily' ? 'Daily' : mode === 'classic-experimental' ? 'Experimental' : mode === 'classic-hand' ? 'Hand' : 'Classic'}
           </span>
         </div>
         <button
@@ -591,17 +670,28 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
           </div>
         )}
 
-        {/* Touch controls with camera preview for head tracking */}
+        {/* Touch controls with camera preview for head/hand tracking */}
         <div className="flex items-center justify-center gap-4">
-          {isHeadTrackingMode && isCalibrated && (
-            <CameraPreview videoRef={videoRef} status={headTrackingStatus} />
+          {isHeadTrackingMode && isHeadCalibrated && (
+            <CameraPreview videoRef={headVideoRef} status={headTrackingStatus} />
+          )}
+          {isHandTrackingMode && isHandCalibrated && (
+            <HandCameraPreview
+              videoRef={handVideoRef}
+              status={handTrackingStatus}
+              landmarks={handLandmarks}
+              detectedDirection={handDetectedDirection}
+              triggerState={handTriggerState}
+              calibrationData={handCalibrationData}
+              currentHandPosition={currentHandPosition}
+            />
           )}
           <Controls
             onMoveLeft={moveLeft}
             onMoveRight={moveRight}
             onDrop={drop}
             disabled={isEffectivelyGameOver || isPaused}
-            flashDirection={isHeadTrackingMode ? flashDirection : undefined}
+            flashDirection={isTrackingMode ? flashDirection : undefined}
           />
         </div>
 
@@ -611,6 +701,8 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
             <span>Take your time. Tap drop when ready.</span>
           ) : mode === 'classic-experimental' ? (
             <span>Tilt your head left, right, or down to control</span>
+          ) : mode === 'classic-hand' ? (
+            <span>Move your hand left, right, or down to control</span>
           ) : (
             <>
               <span className="hidden sm:inline">
@@ -627,7 +719,7 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
       {/* Head tracking calibration overlay */}
       {(isHeadTrackingMode || pendingMode === 'classic-experimental') && showCalibration && (
         <CalibrationOverlay
-          videoRef={videoRef}
+          videoRef={headVideoRef}
           status={headTrackingStatus}
           error={headTrackingError}
           onStartCalibration={handleCalibrationStart}
@@ -636,11 +728,42 @@ export default function Game({ onShowWordBank, onShowLeaderboard }: GameProps) {
         />
       )}
 
+      {/* Hand tracking calibration overlay */}
+      {(isHandTrackingMode || pendingMode === 'classic-hand') && showCalibration && (
+        <HandCalibrationOverlay
+          videoRef={handVideoRef}
+          status={handTrackingStatus}
+          error={handTrackingError}
+          landmarks={handLandmarks}
+          calibrationProgress={handCalibrationProgress}
+          countdownSeconds={handCountdownSeconds}
+          verificationState={handVerificationState}
+          calibrationData={handCalibrationData}
+          currentHandPosition={currentHandPosition}
+          onStartCalibration={handleCalibrationStart}
+          onCommit={handleHandCalibrationCommit}
+          onCancel={handleCalibrationCancel}
+        />
+      )}
+
       {/* Re-calibrate button in pause menu for head tracking mode */}
       {isHeadTrackingMode && isPaused && !isEffectivelyGameOver && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
           <button
-            onClick={recalibrate}
+            onClick={recalibrateHead}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black rounded-lg font-medium hover:bg-amber-400 transition-colors"
+          >
+            <RotateCcw size={16} />
+            Re-calibrate
+          </button>
+        </div>
+      )}
+
+      {/* Re-calibrate button in pause menu for hand tracking mode */}
+      {isHandTrackingMode && isPaused && !isEffectivelyGameOver && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+          <button
+            onClick={recalibrateHand}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black rounded-lg font-medium hover:bg-amber-400 transition-colors"
           >
             <RotateCcw size={16} />
