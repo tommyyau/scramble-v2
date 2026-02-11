@@ -160,6 +160,11 @@ export const HAND_TRACKING_CONFIG = {
   // Threshold calculation - direction-specific (unified with visual zone)
   THRESHOLD_RATIO_HORIZONTAL: 0.50,   // Trigger at 50% of calibrated left/right movement
   THRESHOLD_RATIO_DOWN: 0.40,         // Trigger at 40% of calibrated down movement (more forgiving)
+  // Minimum movement required during calibration (as fraction of frame width/height)
+  // If user doesn't move at least this much, calibration for that direction fails
+  MIN_CALIBRATION_MOVEMENT: 0.05,     // 5% of frame = meaningful movement
+  // Minimum threshold floor to prevent jitter triggering (as fraction of frame)
+  MIN_THRESHOLD_FLOOR: 0.03,          // 3% of frame = won't trigger on jitter alone
   // Minimum time between actions (ms)
   ACTION_COOLDOWN: 150,
   // Detection frame rate (lower = better performance)

@@ -86,14 +86,11 @@ function buildWordResultUpdates(
     wordsFound: result.state.wordsFound,
   }
 
-  // Find new words (not previously found)
-  const newWords = result.wordsFound.filter(w => !currentState.wordsFound.includes(w))
-
-  if (newWords.length > 0) {
-    // Update stats
-    const longestNew = newWords.reduce((a, b) => a.length > b.length ? a : b, '')
-    const newLongest = longestNew.length > currentState.stats.longestWord.length
-      ? longestNew
+  // Repeated words are valid and treated the same as new words
+  if (result.wordsFound.length > 0) {
+    const longestFound = result.wordsFound.reduce((a, b) => a.length > b.length ? a : b, '')
+    const newLongest = longestFound.length > currentState.stats.longestWord.length
+      ? longestFound
       : currentState.stats.longestWord
     const newBestChain = Math.max(currentState.stats.bestChain, result.chainCount)
     const newBestStreak = Math.max(currentState.stats.bestStreak, streakCount)
@@ -101,13 +98,13 @@ function buildWordResultUpdates(
     updates.stats = {
       longestWord: newLongest,
       bestChain: newBestChain,
-      totalWordsFound: currentState.stats.totalWordsFound + newWords.length,
+      totalWordsFound: currentState.stats.totalWordsFound + result.wordsFound.length,
       bestStreak: newBestStreak,
       wordHistory: [...currentState.stats.wordHistory, ...result.wordsWithScores],
     }
 
     updates.lastFoundWord = {
-      word: newWords.join(', '),
+      word: result.wordsFound.join(', '),
       score: result.score,
       id: ++wordEventId,
       chainCount: result.chainCount,
@@ -325,13 +322,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Phase 1: Detect words and mark blocks as celebrating (don't remove yet)
     const wordResult = detectAndMarkWords(droppedState, { streakMultiplier })
 
-    // Check for new words found
-    const newWords = wordResult.wordsFound.filter(
-      w => !state.wordsFound.includes(w)
-    )
+    // Words found this round (repeated words are valid and treated the same)
+    const wordsFoundThisRound = wordResult.wordsFound.slice(state.wordsFound.length)
     const scoreGained = wordResult.score - state.score
 
-    if (newWords.length > 0) {
+    if (wordsFoundThisRound.length > 0) {
       // Words found! Keep blocks glowing, don't spawn next block yet
       // Play sounds for word clear
       playWordClear()
@@ -364,13 +359,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // Update stats
       const currentStats = state.stats
-      const longestNew = newWords.reduce((a, b) => a.length > b.length ? a : b, '')
-      const newLongest = longestNew.length > currentStats.longestWord.length ? longestNew : currentStats.longestWord
-      const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
-      const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
-      // Calculate individual word scores for history (including bonus if matched)
-      const newWordsWithScores: WordWithScore[] = newWords.map(word => {
+      // Calculate individual word scores for all words this round
+      const wordsWithScores: WordWithScore[] = wordsFoundThisRound.map(word => {
         const isBonus = isBonusWordMatch(word, state.currentBonusWord)
         return {
           word,
@@ -386,7 +377,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
 
       updates.lastFoundWord = {
-        word: newWords.join(', '),
+        word: wordsFoundThisRound.join(', '),
         score: scoreGained,
         id: ++wordEventId,
         chainCount: wordResult.chainCount,
@@ -394,12 +385,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
         bonusWordMatched: wordResult.bonusWordMatched,
       }
       updates.isCelebrating = true
+
+      const longestThisRound = wordsFoundThisRound.reduce((a, b) => a.length > b.length ? a : b, '')
+      const newLongest = longestThisRound.length > currentStats.longestWord.length ? longestThisRound : currentStats.longestWord
+      const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
+      const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
+
       updates.stats = {
         longestWord: newLongest,
         bestChain: newBestChain,
-        totalWordsFound: currentStats.totalWordsFound + newWords.length,
+        totalWordsFound: currentStats.totalWordsFound + wordsFoundThisRound.length,
         bestStreak: newBestStreak,
-        wordHistory: [...currentStats.wordHistory, ...newWordsWithScores],
+        wordHistory: [...currentStats.wordHistory, ...wordsWithScores],
       }
 
       // Trigger particles at cleared positions (will animate alongside glowing blocks)
@@ -503,13 +500,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Phase 1: Detect words and mark blocks as celebrating (don't remove yet)
       const wordResult = detectAndMarkWords(newState, { streakMultiplier })
 
-      // Check for new words found
-      const newWords = wordResult.wordsFound.filter(
-        w => !state.wordsFound.includes(w)
-      )
+      // Words found this round (repeated words are valid and treated the same)
+      const wordsFoundThisRound = wordResult.wordsFound.slice(state.wordsFound.length)
       const scoreGained = wordResult.score - state.score
 
-      if (newWords.length > 0) {
+      if (wordsFoundThisRound.length > 0) {
         // Words found! Keep blocks glowing, don't spawn next block yet
         // Play sounds for word clear and chains
         playWordClear()
@@ -542,13 +537,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         // Update stats
         const currentStats = state.stats
-        const longestNew = newWords.reduce((a, b) => a.length > b.length ? a : b, '')
-        const newLongest = longestNew.length > currentStats.longestWord.length ? longestNew : currentStats.longestWord
-        const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
-        const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
 
-        // Calculate individual word scores for history (including bonus if matched)
-        const newWordsWithScores: WordWithScore[] = newWords.map(word => {
+        // Calculate individual word scores for all words this round
+        const wordsWithScores: WordWithScore[] = wordsFoundThisRound.map(word => {
           const isBonus = isBonusWordMatch(word, state.currentBonusWord)
           return {
             word,
@@ -564,7 +555,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         })
 
         updates.lastFoundWord = {
-          word: newWords.join(', '),
+          word: wordsFoundThisRound.join(', '),
           score: scoreGained,
           id: ++wordEventId,
           chainCount: wordResult.chainCount,
@@ -572,12 +563,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
           bonusWordMatched: wordResult.bonusWordMatched,
         }
         updates.isCelebrating = true
+
+        const longestThisRound = wordsFoundThisRound.reduce((a, b) => a.length > b.length ? a : b, '')
+        const newLongest = longestThisRound.length > currentStats.longestWord.length ? longestThisRound : currentStats.longestWord
+        const newBestChain = Math.max(currentStats.bestChain, wordResult.chainCount)
+        const newBestStreak = Math.max(currentStats.bestStreak, newStreak)
+
         updates.stats = {
           longestWord: newLongest,
           bestChain: newBestChain,
-          totalWordsFound: currentStats.totalWordsFound + newWords.length,
+          totalWordsFound: currentStats.totalWordsFound + wordsFoundThisRound.length,
           bestStreak: newBestStreak,
-          wordHistory: [...currentStats.wordHistory, ...newWordsWithScores],
+          wordHistory: [...currentStats.wordHistory, ...wordsWithScores],
         }
 
         // Trigger particles at cleared positions (will animate alongside glowing blocks)

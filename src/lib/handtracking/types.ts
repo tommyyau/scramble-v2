@@ -116,4 +116,5 @@ export interface VerificationState {
   leftTested: boolean
   rightTested: boolean
   downTested: boolean
+  wasInNeutral: boolean  // Must return to neutral between each test
 }

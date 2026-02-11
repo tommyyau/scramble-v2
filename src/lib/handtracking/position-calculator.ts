@@ -153,15 +153,41 @@ export function createInitialCalibrationData(centerPosition: HandPosition): Cali
 /**
  * Calculate thresholds from max movements
  * Uses direction-specific ratios: 50% for horizontal, 40% for down (more forgiving)
+ * Applies minimum floor to prevent jitter from triggering actions
  */
 export function calculateThresholds(maxMovements: CalibrationData['maxMovements']): CalibrationData['thresholds'] {
   const horizontalRatio = HAND_TRACKING_CONFIG.THRESHOLD_RATIO_HORIZONTAL
   const downRatio = HAND_TRACKING_CONFIG.THRESHOLD_RATIO_DOWN
+  const minFloor = HAND_TRACKING_CONFIG.MIN_THRESHOLD_FLOOR
 
   return {
-    left: maxMovements.left * horizontalRatio,
-    right: maxMovements.right * horizontalRatio,
-    down: maxMovements.down * downRatio,
+    left: Math.max(maxMovements.left * horizontalRatio, minFloor),
+    right: Math.max(maxMovements.right * horizontalRatio, minFloor),
+    down: Math.max(maxMovements.down * downRatio, minFloor),
+  }
+}
+
+/**
+ * Validate that calibration captured meaningful movement
+ * Returns which directions had sufficient movement
+ */
+export function validateCalibrationMovements(maxMovements: CalibrationData['maxMovements']): {
+  valid: boolean
+  leftValid: boolean
+  rightValid: boolean
+  downValid: boolean
+} {
+  const minMovement = HAND_TRACKING_CONFIG.MIN_CALIBRATION_MOVEMENT
+
+  const leftValid = maxMovements.left >= minMovement
+  const rightValid = maxMovements.right >= minMovement
+  const downValid = maxMovements.down >= minMovement
+
+  return {
+    valid: leftValid && rightValid && downValid,
+    leftValid,
+    rightValid,
+    downValid,
   }
 }
 

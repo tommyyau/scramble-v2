@@ -99,6 +99,7 @@ export function useHandTracking({
     leftTested: false,
     rightTested: false,
     downTested: false,
+    wasInNeutral: false,
   })
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -125,6 +126,7 @@ export function useHandTracking({
     leftTested: false,
     rightTested: false,
     downTested: false,
+    wasInNeutral: false,
   })
 
   // Helper to transition to next calibration phase
@@ -333,11 +335,12 @@ export function useHandTracking({
             setCalibrationData(calibrationDataRef.current)
           }
 
-          // Reset verification state
+          // Reset verification state - start NOT in neutral so user must return to center first
           verificationStateRef.current = {
             leftTested: false,
             rightTested: false,
             downTested: false,
+            wasInNeutral: false,
           }
           setVerificationState(verificationStateRef.current)
 
@@ -347,6 +350,7 @@ export function useHandTracking({
       }
 
       // Phase 10: Verification - let user test movements
+      // User must return to neutral zone between testing each direction
       if (currentStatus === 'verification') {
         if (!calibrationDataRef.current) return
 
@@ -355,25 +359,34 @@ export function useHandTracking({
         // Show direction feedback
         setDetectedDirection(zoneCheck.direction)
 
-        // Track which directions have been tested
-        if (zoneCheck.direction === 'left' && !verificationStateRef.current.leftTested) {
-          verificationStateRef.current = { ...verificationStateRef.current, leftTested: true }
-          setVerificationState(verificationStateRef.current)
-        } else if (zoneCheck.direction === 'right' && !verificationStateRef.current.rightTested) {
-          verificationStateRef.current = { ...verificationStateRef.current, rightTested: true }
-          setVerificationState(verificationStateRef.current)
-        } else if (zoneCheck.direction === 'drop' && !verificationStateRef.current.downTested) {
-          verificationStateRef.current = { ...verificationStateRef.current, downTested: true }
-          setVerificationState(verificationStateRef.current)
-        }
-
-        // Update trigger state for visual feedback
+        // Track neutral zone entry - required before each test
         if (zoneCheck.isInNeutralZone) {
+          // Mark that user has returned to neutral (ready to test next direction)
+          if (!verificationStateRef.current.wasInNeutral) {
+            verificationStateRef.current = { ...verificationStateRef.current, wasInNeutral: true }
+            setVerificationState(verificationStateRef.current)
+          }
           if (triggerStateRef.current !== 'neutral') {
             triggerStateRef.current = 'neutral'
             setTriggerState('neutral')
           }
         } else if (zoneCheck.direction) {
+          // Only mark direction as tested if user was in neutral first
+          // This prevents auto-triggering all directions without distinct movements
+          if (verificationStateRef.current.wasInNeutral) {
+            if (zoneCheck.direction === 'left' && !verificationStateRef.current.leftTested) {
+              verificationStateRef.current = { ...verificationStateRef.current, leftTested: true, wasInNeutral: false }
+              setVerificationState(verificationStateRef.current)
+            } else if (zoneCheck.direction === 'right' && !verificationStateRef.current.rightTested) {
+              verificationStateRef.current = { ...verificationStateRef.current, rightTested: true, wasInNeutral: false }
+              setVerificationState(verificationStateRef.current)
+            } else if (zoneCheck.direction === 'drop' && !verificationStateRef.current.downTested) {
+              verificationStateRef.current = { ...verificationStateRef.current, downTested: true, wasInNeutral: false }
+              setVerificationState(verificationStateRef.current)
+            }
+          }
+
+          // Update trigger state for visual feedback
           const newState = `triggered_${zoneCheck.direction === 'drop' ? 'drop' : zoneCheck.direction}` as TriggerState
           if (triggerStateRef.current !== newState) {
             triggerStateRef.current = newState
@@ -565,6 +578,7 @@ export function useHandTracking({
       leftTested: false,
       rightTested: false,
       downTested: false,
+      wasInNeutral: false,
     }
     setVerificationState(verificationStateRef.current)
     transitionToPhase('calibrating-center')
@@ -612,6 +626,7 @@ export function useHandTracking({
       leftTested: false,
       rightTested: false,
       downTested: false,
+      wasInNeutral: false,
     }
     setVerificationState(verificationStateRef.current)
     setStatus('idle')
